@@ -1,0 +1,96 @@
+# ローカル開発環境 Docker Compose
+#
+# 使用前に local/.env を設定してください（.env.example を参照）
+# 詳細は docs/local_dev_guide.md を参照してください
+#
+# profiles による制御:
+#   デフォルト (secrets-api + postgres のみ): docker compose up -d
+#   + backend コンテナ: --profile backend
+#   + nginx コンテナ:   --profile nginx
+
+services:
+  secrets-api:
+    image: "ghcr.io/s-hikonyan-sys/art-gallery-secrets:latest"
+    container_name: "art-gallery-secrets-api-dev"
+    environment:
+      DEV_MODE: "true"
+    volumes:
+      - /home/homepage/project/my_homepage/replace_work/art-gallery-maintenance-tools/local/conf/secrets/config:/app/config:ro
+      - /home/homepage/project/my_homepage/replace_work/art-gallery-maintenance-tools/local/conf/secrets/tokens:/app/tokens:rw
+      - ${SECRETS_REPO_PATH}:/app:rw
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - art-gallery-local-network
+
+  postgres:
+    image: "ghcr.io/s-hikonyan-sys/art-gallery-database:latest"
+    container_name: "art-gallery-db-dev"
+    environment:
+      POSTGRES_DB: art_gallery_dev
+      POSTGRES_USER: artuser
+    depends_on:
+      secrets-api:
+        condition: service_healthy
+    volumes:
+      - art_gallery_postgres_dev_data:/var/lib/postgresql/data
+      - /home/homepage/project/my_homepage/replace_work/art-gallery-maintenance-tools/local/conf/secrets/tokens:/app/tokens:ro
+      - ${DATABASE_REPO_PATH}/migrations:/app/migrations:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U artuser -d art_gallery_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - art-gallery-local-network
+
+  backend:
+    profiles: ["backend"]
+    # container_name は vite.config.js のプロキシターゲット "art-gallery-dev-api" に合わせる
+    # setup.sh で /etc/hosts に 127.0.0.1 art-gallery-dev-api を追加済みの場合、
+    # npm run dev からもコンテナ名でアクセス可能になる
+    image: "ghcr.io/s-hikonyan-sys/art-gallery-backend:latest"
+    container_name: "art-gallery-dev-api"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      secrets-api:
+        condition: service_healthy
+    volumes:
+      - /home/homepage/project/my_homepage/replace_work/art-gallery-maintenance-tools/local/conf/backend:/app/config:ro
+      - /home/homepage/project/my_homepage/replace_work/art-gallery-maintenance-tools/local/conf/secrets/tokens:/app/tokens:ro
+      - ${BACKEND_REPO_PATH}:/app:rw
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    networks:
+      - art-gallery-local-network
+
+  nginx:
+    profiles: ["nginx"]
+    image: "nginx:1.25-alpine"
+    container_name: "art-gallery-nginx-dev"
+    volumes:
+      - /home/homepage/project/my_homepage/replace_work/art-gallery-maintenance-tools/local/conf/nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+      - ${FRONTEND_REPO_PATH}/dist:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    networks:
+      - art-gallery-local-network
+
+networks:
+  art-gallery-local-network:
+    driver: bridge
+
+volumes:
+  art_gallery_postgres_dev_data:

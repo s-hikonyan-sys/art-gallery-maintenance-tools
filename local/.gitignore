@@ -1,0 +1,15 @@
+# 環境変数（各ユーザーの設定を含む）
+.env
+
+# 実設定ファイル（テンプレートは *.example としてコミット済み）
+conf/secrets/config/config.yaml
+conf/secrets/config/secrets.yaml.encrypted
+conf/backend/config.yaml
+# conf/nginx/nginx.dev.conf は秘密情報を含まないためコミット対象
+
+# 実行時に生成されるトークンファイル
+conf/secrets/tokens/*.txt
+
+# Python キャッシュ
+__pycache__/
+*.pyc

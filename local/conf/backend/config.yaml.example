@@ -1,0 +1,37 @@
+# バックエンド設定（ローカル開発用テンプレート）
+# このファイルをコピーして config.yaml を作成してください
+#   cp config.yaml.example config.yaml
+#
+# [シナリオA/C] backend をコンテナで起動する場合:
+#   - database.host: art-gallery-db-dev（コンテナ名）
+#   - secrets_api.url: http://art-gallery-secrets-api-dev:5000（コンテナ名）
+#   - secrets_api.token_file: コメントアウトのまま（コンテナ内デフォルトパスを使用）
+#
+# [シナリオB] backend をホストプロセスでデバッグする場合:
+#   - database.host: localhost（docker-compose で 5432:5432 公開済み）
+#   - secrets_api.url: http://localhost:5000（docker-compose で 5000:5000 公開済み）
+#   - secrets_api.token_file: ホスト上のトークンファイルパスを設定（下記参照）
+
+server:
+  port: 8080
+  flask_env: development
+  debug: true
+
+frontend:
+  url: http://localhost:3000
+
+database:
+  host: art-gallery-db-dev
+  # host: localhost  # シナリオB（ホストプロセス起動）の場合はこちらを使用
+  port: 5432
+  name: art_gallery_dev
+  user: artuser
+
+secrets_api:
+  url: http://art-gallery-secrets-api-dev:5000
+  # url: http://localhost:5000  # シナリオB（ホストプロセス起動）の場合はこちらを使用
+
+  # シナリオB専用: ホスト上のトークンファイルパスを設定
+  # docker-compose.local.yml で tokens/ がホストにバインドマウントされているため参照可能
+  # <user> を実際のユーザー名に置き換えること
+  # token_file: /home/<user>/art-gallery/art-gallery-maintenance-tools/local/conf/secrets/tokens/backend_token.txt
