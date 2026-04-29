@@ -1,0 +1,130 @@
+---
+# 高リスク国・地域の IPv4 帯域を ipdeny.com から取得し、
+# TCP 80 / 443 宛てのトラフィックのみ firewalld で DROP する。
+#
+# SSH (22) はブロックしない（GitHub Actions 等の海外からのデプロイを維持するため）。
+
+- name: Install ipset (for large CIDR lists)
+  ansible.builtin.dnf:
+    name: ipset
+    state: present
+  tags:
+    - init-firewall
+
+- name: Geo block — download, build ipset, add rich rules
+  tags:
+    - init-firewall
+  block:
+    - name: Remove existing geo-block rich rules and ipset (idempotent refresh)
+      ansible.builtin.shell: |
+        set -euo pipefail
+        while IFS= read -r rule; do
+          [ -z "$rule" ] && continue
+          firewall-cmd --permanent --remove-rich-rule="$rule" || true
+        done < <(firewall-cmd --permanent --list-rich-rules 2>/dev/null | grep blocked_web_countries || true)
+        firewall-cmd --permanent --delete-ipset=blocked_web_countries 2>/dev/null || true
+      args:
+        executable: /bin/bash
+      changed_when: true
+
+    - name: Create temporary directory for ipdeny zone files
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: ipdeny
+      register: ipdeny_tmp
+
+    - name: Download country IPv4 zone files from ipdeny.com
+      ansible.builtin.get_url:
+        url: "https://www.ipdeny.com/ipblocks/data/countries/{{ item }}.zone"
+        dest: "{{ ipdeny_tmp.path }}/{{ item }}.zone"
+        mode: '0644'
+        timeout: 120
+        force: true
+      loop: "{{ firewall_blocked_country_codes }}"
+      register: ipdeny_downloads
+      ignore_errors: true
+
+    - name: Count successful zone downloads
+      ansible.builtin.set_fact:
+        ipdeny_zone_success_count: "{{ ipdeny_downloads.results | selectattr('failed', 'equalto', false) | list | length }}"
+
+    - name: Fail if no country zone files were downloaded
+      ansible.builtin.fail:
+        msg: >-
+          国別ゾーンファイルが1件も取得できませんでした。
+          `firewall_blocked_country_codes` の国コード（小文字2文字）とネットワーク接続を確認してください。
+      when: ipdeny_zone_success_count | int < 1
+
+    - name: Merge zone files into single CIDR list
+      ansible.builtin.shell: |
+        set -euo pipefail
+        MERGED="{{ ipdeny_tmp.path }}/merged.zone"
+        : > "$MERGED"
+        for z in "{{ ipdeny_tmp.path }}"/*.zone; do
+          [ -f "$z" ] || continue
+          grep -vE '^(#|$)' "$z" >> "$MERGED"
+        done
+        sort -u "$MERGED" -o "$MERGED"
+        LINES=$(wc -l < "$MERGED" | tr -d ' ')
+        if [ "$LINES" -lt 1 ]; then
+          echo "merged.zone is empty" >&2
+          exit 1
+        fi
+        echo "Merged CIDR count: $LINES"
+      args:
+        executable: /bin/bash
+      register: merge_result
+      changed_when: true
+
+    - name: Create firewalld ipset for merged country CIDRs
+      ansible.builtin.command:
+        cmd: >-
+          firewall-cmd --permanent
+          --new-ipset=blocked_web_countries
+          --type=hash:net
+          --option=family=inet
+          --option=maxelem=400000
+      register: fw_new_ipset
+      changed_when: fw_new_ipset.rc == 0
+      failed_when: >-
+        fw_new_ipset.rc != 0 and
+        ('already' not in ((fw_new_ipset.stderr | default('')) ~ (fw_new_ipset.stdout | default(''))) | lower)
+
+    - name: Populate firewalld ipset from merged zone file
+      ansible.builtin.command:
+        cmd: >-
+          firewall-cmd --permanent
+          --ipset=blocked_web_countries
+          --add-entries-from-file={{ ipdeny_tmp.path }}/merged.zone
+      register: fw_ipset_entries
+      changed_when: fw_ipset_entries.rc == 0
+      failed_when: fw_ipset_entries.rc != 0
+
+    - name: Drop TCP/80 from blocked country ipset
+      ansible.posix.firewalld:
+        rich_rule: rule family="ipv4" source ipset="blocked_web_countries" port port="80" protocol="tcp" drop
+        zone: public
+        permanent: true
+        immediate: false
+        state: enabled
+
+    - name: Drop TCP/443 from blocked country ipset
+      ansible.posix.firewalld:
+        rich_rule: rule family="ipv4" source ipset="blocked_web_countries" port port="443" protocol="tcp" drop
+        zone: public
+        permanent: true
+        immediate: false
+        state: enabled
+
+    - name: Show geo-block summary
+      ansible.builtin.debug:
+        msg: >-
+          HTTP/HTTPS のみ、国コード {{ firewall_blocked_country_codes | join(', ') }} 由来の IPv4 帯域を DROP しました。
+          SSH は対象外です。詳細は docs/SERVER_INIT.md を参照してください。
+
+  always:
+    - name: Remove temporary ipdeny directory
+      ansible.builtin.file:
+        path: "{{ ipdeny_tmp.path }}"
+        state: absent
+      when: ipdeny_tmp is defined

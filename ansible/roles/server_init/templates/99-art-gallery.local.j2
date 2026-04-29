@@ -1,0 +1,14 @@
+# art-gallery サーバー初期構築 — Fail2ban ローカル設定
+# このファイルは Ansible が生成する（手編集しない）
+
+[DEFAULT]
+bantime  = {{ fail2ban_sshd_bantime }}
+findtime = {{ fail2ban_sshd_findtime }}
+maxretry = {{ fail2ban_sshd_maxretry }}
+ignoreip = 127.0.0.1/8 ::1{% if fail2ban_ignore_ips | length > 0 %} {{ fail2ban_ignore_ips | join(' ') }}{% endif %}
+
+[sshd]
+enabled = true
+port    = ssh
+logpath = %(sshd_log)s
+backend = systemd

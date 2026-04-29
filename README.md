@@ -56,7 +56,7 @@ OS 再インストール後の復旧手順は [`docs/SERVER_INIT.md`](docs/SERVE
 cp ansible/server_init_vars.yml.example ansible/server_init_vars.yml
 nano ansible/server_init_vars.yml
 
-# サーバー初期構築実行
+# サーバー初期構築実行（Docker / firewalld / 高リスク国ジオブロック HTTP(S) / Fail2ban / SSL 等）
 make server-init
 ```
 

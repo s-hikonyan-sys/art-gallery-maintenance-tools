@@ -28,6 +28,24 @@ firewall_services:
   - http
   - https
 
+# 高リスク国・地域からの HTTP/HTTPS のみブロック（ipdeny.com のゾーンファイルを使用）
+# SSH (22) は対象外。GitHub Actions 等の海外からの SSH を阻害しないため。
+# 国コードは ISO 3166-1 alpha-2（小文字）。空リストにするとジオブロック無効。
+firewall_geo_block_enabled: true
+firewall_blocked_country_codes:
+  - cn
+  - ru
+  - by
+  - kp
+  - ir
+
+# Fail2ban: SSH ブルートフォース対策
+# ignoreip に自宅グローバルIP等を追加すると誤BANを防げる（server_init_vars.yml で上書き可）
+fail2ban_ignore_ips: []
+fail2ban_sshd_maxretry: 5
+fail2ban_sshd_bantime: 3600
+fail2ban_sshd_findtime: 600
+
 # Docker インストール設定（AlmaLinux 10）
 docker_repo_url: "https://download.docker.com/linux/rhel"
 

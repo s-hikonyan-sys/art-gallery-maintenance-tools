@@ -1,0 +1,52 @@
+---
+# Fail2ban: SSH ブルートフォース・辞書攻撃の自動ブロック
+# EPEL は security_updates.yml で有効化済みであること
+
+- name: Install Fail2ban
+  ansible.builtin.dnf:
+    name: fail2ban
+    state: present
+  tags:
+    - init-fail2ban
+
+- name: Deploy Fail2ban jail configuration
+  ansible.builtin.template:
+    src: 99-art-gallery.local.j2
+    dest: /etc/fail2ban/jail.d/99-art-gallery.local
+    mode: '0644'
+    owner: root
+    group: root
+  notify: Restart fail2ban
+  tags:
+    - init-fail2ban
+
+- name: Enable and start Fail2ban
+  ansible.builtin.systemd:
+    name: fail2ban
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  tags:
+    - init-fail2ban
+
+- name: Verify Fail2ban service is active
+  ansible.builtin.command: systemctl is-active fail2ban
+  register: f2b_active
+  changed_when: false
+  failed_when: f2b_active.stdout | trim != 'active'
+  tags:
+    - init-fail2ban
+
+- name: Show Fail2ban sshd jail status
+  ansible.builtin.command: fail2ban-client status sshd
+  register: f2b_sshd_status
+  changed_when: false
+  failed_when: false
+  tags:
+    - init-fail2ban
+
+- name: Print Fail2ban sshd status
+  ansible.builtin.debug:
+    msg: "{{ f2b_sshd_status.stdout_lines | default(['(sshd jail not yet active — 数秒後に fail2ban-client status sshd を再実行)']) }}"
+  tags:
+    - init-fail2ban

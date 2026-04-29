@@ -32,3 +32,19 @@ certbot_email: "your-email@example.com"
 # ============================================================
 ghcr_token: "ghp_xxxxxxxxxxxxxxxxxxxx"
 ghcr_username: "s-hikonyan-sys"
+
+# ============================================================
+# 任意: Fail2ban / ジオブロックの上書き
+# （省略時は ansible/group_vars/all.yml のデフォルトを使用）
+# ============================================================
+# 自宅など固定グローバルIPを登録すると、Fail2ban による誤BANを避けやすい
+# fail2ban_ignore_ips:
+#   - "203.0.113.50/32"
+#
+# ジオブロックを無効化する場合（トラブルシュート用）
+# firewall_geo_block_enabled: false
+#
+# ブロック対象国コード（ISO 3166-1 alpha-2 小文字）を変更する場合
+# firewall_blocked_country_codes:
+#   - cn
+#   - ru

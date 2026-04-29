@@ -172,9 +172,63 @@ Playbook が完了すると以下が設定されます:
 - [x] SSH パスワード認証の無効化
 - [x] Docker CE + Docker Compose プラグインのインストール
 - [x] firewalld の有効化（SSH / HTTP / HTTPS のみ許可）
+- [x] **高リスク国ジオブロック**（[ipdeny.com](https://www.ipdeny.com/ipblocks/) の国別 IPv4 帯域を firewalld ipset に取り込み、**TCP 80 / 443 宛てのみ DROP**。SSH は対象外 → GitHub Actions からの SSH は阻害しない）
+- [x] **Fail2ban**（`sshd` ジェイル有効。ブルートフォース試行を自動 BAN）
 - [x] デプロイメントディレクトリ `/opt/art-gallery/` の作成
 - [x] Let's Encrypt SSL 証明書の取得（`--skip-tags init-ssl` でスキップ可）
 - [x] GHCR Docker 認証設定（`artgallery` ユーザー）
+
+個別に再実行する場合の Ansible タグ例:
+
+```bash
+cd ansible
+# ファイアウォール + ジオブロックのみ
+ansible-playbook playbook_server_init.yml \
+  --inventory inventory/production_init.yml \
+  --extra-vars "@server_init_vars.yml" \
+  --tags "init-firewall"
+
+# Fail2ban のみ
+ansible-playbook playbook_server_init.yml \
+  --inventory inventory/production_init.yml \
+  --extra-vars "@server_init_vars.yml" \
+  --tags "init-fail2ban"
+```
+
+---
+
+### 1-5. ジオブロックと Fail2ban の補足
+
+#### ジオブロック（HTTP/HTTPS のみ）
+
+| 項目 | 内容 |
+|:---|:---|
+| データソース | `https://www.ipdeny.com/ipblocks/data/countries/{国コード}.zone` |
+| デフォルトでブロックする国 | `cn`, `ru`, `by`, `kp`, `ir`（`ansible/group_vars/all.yml` の `firewall_blocked_country_codes` で変更可） |
+| 対象ポート | **TCP 80 と 443 のみ**（Web）。SSH (22) はブロックしない |
+| 無効化 | `server_init_vars.yml` で `firewall_geo_block_enabled: false` を指定するか、リストを空にする |
+
+**注意:**
+
+- Let's Encrypt の HTTP-01 検証は主に米欧などの IP から行われる。本ジオブロックは上記の高リスク国の帯域のみを落とすため、通常は証明書更新に支障は出にくい。
+- 海外在住の利用者や CDN 経由のアクセスがある場合は、国リストを見直すこと。
+- IPv6 トラフィックは本プレイブックでは**未対応**（必要なら別途検討）。
+
+#### Fail2ban
+
+| 項目 | 内容 |
+|:---|:---|
+| 設定ファイル | `/etc/fail2ban/jail.d/99-art-gallery.local`（Ansible が生成） |
+| デフォルト | `maxretry=5`, `findtime=600`, `bantime=3600`, `backend=systemd` |
+| 自宅 IP の除外 | `server_init_vars.yml` で `fail2ban_ignore_ips: ["203.0.113.1/32"]` のように CIDR を列挙 |
+
+動作確認:
+
+```bash
+sudo fail2ban-client status sshd
+```
+
+参考: [さくらのVPS セキュリティ設定ガイド](https://manual.sakura.ad.jp/vps/support/security/firstsecurity.html)
 
 ---
 
@@ -267,3 +321,17 @@ dnf install podman podman-docker
 # ドライランでテスト
 certbot certonly --standalone --dry-run -d nara-sketch.com
 ```
+
+### ジオブロック（firewalld ipset）で Playbook が失敗する
+
+- `firewall-cmd --permanent --add-entries-from-file` が古い firewalld では未サポートの場合がある。その場合は `firewall_geo_block_enabled: false` で無効化し、手動でルールを設計する。
+- ipdeny.com への HTTPS 取得がタイムアウトする場合は、しばらく待ってから `--tags init-firewall` のみ再実行。
+
+### Fail2ban が起動しない / sshd ジェイルが無効
+
+```bash
+sudo journalctl -u fail2ban -n 50 --no-pager
+sudo fail2ban-client -d
+```
+
+AlmaLinux 10 で `backend=systemd` が合わない場合は、`ansible/roles/server_init/templates/99-art-gallery.local.j2` の `[sshd]` セクションを `backend = auto` に変更して再デプロイする。

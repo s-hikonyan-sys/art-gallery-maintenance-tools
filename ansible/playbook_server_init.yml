@@ -20,10 +20,11 @@
 #   init-security    : セキュリティアップデート + ベースパッケージ
 #   init-users       : app ユーザー作成・SSH 設定
 #   init-docker      : Docker CE インストール
-#   init-firewall    : firewalld 設定
+#   init-firewall    : firewalld + 高リスク国ジオブロック（HTTP/HTTPS のみ）
 #   init-directories : デプロイメントディレクトリ作成
 #   init-ssl         : Let's Encrypt 証明書取得
 #   init-ghcr        : GHCR 認証設定
+#   init-fail2ban    : Fail2ban（SSH ブルートフォース対策）
 
 - name: Initialize art-gallery production server
   hosts: production-init

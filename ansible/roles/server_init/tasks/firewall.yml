@@ -41,6 +41,17 @@
   tags:
     - init-firewall
 
+- name: Geo block high-risk countries on HTTP/HTTPS only
+  ansible.builtin.include_tasks: firewall_geo.yml
+  when:
+    - firewall_geo_block_enabled | bool
+    - firewall_blocked_country_codes | length > 0
+  tags:
+    - init-firewall
+  apply:
+    tags:
+      - init-firewall
+
 - name: Reload firewalld to apply changes
   ansible.builtin.command: firewall-cmd --reload
   changed_when: true

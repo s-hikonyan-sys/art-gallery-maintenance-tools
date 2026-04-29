@@ -35,3 +35,11 @@
   ansible.builtin.include_tasks: ghcr.yml
   tags:
     - init-ghcr
+
+- name: Install and configure Fail2ban (SSH brute-force protection)
+  ansible.builtin.include_tasks: fail2ban.yml
+  tags:
+    - init-fail2ban
+  apply:
+    tags:
+      - init-fail2ban
