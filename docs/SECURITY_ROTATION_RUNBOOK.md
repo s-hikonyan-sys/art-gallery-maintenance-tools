@@ -15,10 +15,52 @@
 
 1. GitHub 右上アイコン → `Settings`。
 2. 左メニュー `Developer settings` → `Personal access tokens`。
-3. 利用中の方式に合わせて選択（一般的には `Tokens (classic)`）。
+3. 方式を選択（このリポジトリ運用では `Tokens (classic)` 推奨）。
 4. `Generate new token` を選択し、用途が分かる名前・有効期限を設定。
-5. GHCR 用に必要な権限を付与（例: package read/write が必要な運用に合わせる）。
+5. 用途に応じてスコープを付与（下表）。
 6. 生成直後に表示されるトークン文字列を安全な場所へ一時保存（再表示不可）。
+
+#### PAT 設定（GHCR / push + pull 前提）
+
+| 用途 | 推奨方式 | 必須権限 |
+|:---|:---|:---|
+| CI/CD および運用で push + pull | classic PAT | `write:packages` + `read:packages` |
+
+- private repository を扱う運用では、状況により `repo` が必要になる場合がある。
+- `delete:packages` は、パッケージ削除運用をしない限り付与しない。
+- 本リポジトリ運用では `push + pull` を前提としてトークンを作成する。
+
+#### fine-grained の `Repository access` で選ぶ対象
+
+`Only select repositories` を使う場合は、次を選択する（不足時は追加）。
+
+- `art-gallery-release-tools`（ビルド workflow 実行元、manifest 更新 PR 作成先）
+- `art-gallery-backend`（ソース参照 + GHCR イメージ発行対象）
+- `art-gallery-database`（ソース参照 + GHCR イメージ発行対象）
+- `art-gallery-secrets`（ソース参照 + GHCR イメージ発行対象）
+- `art-gallery-nginx`（ソース参照 + GHCR イメージ発行対象）
+- `art-gallery-nginx-base`（`art-gallery-nginx` ビルド時のベースイメージ参照元）
+
+補足:
+
+- `art-gallery-maintenance-tools` は、PAT の配布・反映用途（`server_init`）が主で、GHCR イメージ発行元そのものではない。
+- ただし `maintenance-tools` の GitHub Actions で GHCR 操作を行う設計に将来変更する場合は、対象として追加する。
+
+#### なぜ上記リポジトリが必要か（GitHub と GHCR の違い）
+
+- `art-gallery-backend` / `database` / `secrets` / `nginx` は、`release-tools` の workflow から GitHub リポジトリを参照（`git ls-remote` / clone）する。
+- その後、ビルド成果物を GHCR へ `docker push` する。
+- 本番サーバー側は GHCR から `docker pull` する。
+- つまり PAT 設計では、**GitHub リポジトリアクセス要件**と**GHCR アクセス要件**を分けて考える。
+
+#### fine-grained PAT を使う場合
+
+- `Permissions` が空（`No account permissions added yet`）だと失敗する。
+- 少なくとも `Packages` を追加し、用途に応じて `Read` または `Read and write` を設定する。
+- `Repository access` は対象リポジトリだけに絞る（`Only select repositories` 推奨）。
+- `Only select repositories` では、GHCR の push/pull に使うリポジトリのみ選択する。
+- 一時的に `All repositories` を使うことは可能だが、確認後に最小範囲へ絞る。
+- `Tokens (classic)` には `Repository access` の選択項目はなく、scope 指定で権限を付与する。
 
 ### 1-2. 変数を更新
 

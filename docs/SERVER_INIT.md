@@ -169,7 +169,7 @@ nano server_init_vars.yml   # 各項目を設定
 | `deploy_ssh_public_key` | デプロイ用公開鍵（`PROD_SSH_PRIVATE_KEY` 対応・`artgallery` ユーザー） | `ssh-ed25519 AAAA...` |
 | `domain_name` | SSL 証明書発行対象ドメイン（`init-ssl` で利用） | `example.com` |
 | `certbot_email` | Let's Encrypt 通知メール | `you@example.com` |
-| `ghcr_token` | GitHub PAT（`read:packages` スコープ） | `ghp_xxx...` |
+| `ghcr_token` | GitHub PAT（本運用は push + pull 前提: `write:packages` + `read:packages`） | `ghp_xxx...` |
 | `ghcr_username` | GitHub ユーザー名 | `s-hikonyan-sys` |
 
 **ローカル実行時の切り分け（重要）**
@@ -185,6 +185,10 @@ nano server_init_vars.yml   # 各項目を設定
 > **`domain_name` の設定**: `init-ssl` が `certbot certonly --standalone -d <domain>` を実行するときの対象ドメイン。`example.com` はサンプルなので、実行時は実運用ドメインに置き換える。
 
 > **GitHub Actions 実行時との違い**: `.github/workflows/server_init.yml` では `server_init_vars.yml` をワークフロー内で生成し、`init_host`・`domain_name` などを Variables/Secrets から注入する。`admin_ssh_public_key` も `INIT_SSH_PRIVATE_KEY` から自動算出される。
+>
+> **PAT 補足（fine-grained を使う場合）**: `Repository access` は `Only select repositories` を推奨し、GHCR の push/pull 対象リポジトリのみを選択する。`Tokens (classic)` には `Repository access` 設定はない。
+>
+> **対象リポジトリの考え方**: `art-gallery-release-tools` は workflow 実行元として必須。`art-gallery-backend` / `art-gallery-database` / `art-gallery-secrets` / `art-gallery-nginx`（+ `art-gallery-nginx-base`）は、GitHub ソース参照と GHCR イメージ運用の対象として選択する。詳細は `docs/SECURITY_ROTATION_RUNBOOK.md` を参照。
 
 #### `deploy_ssh_public_key` を管理鍵と分離する手順（推奨）
 
