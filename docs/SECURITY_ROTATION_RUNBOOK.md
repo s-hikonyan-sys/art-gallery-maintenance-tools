@@ -8,6 +8,7 @@
 - 作業ディレクトリは `art-gallery-maintenance-tools` のルート。
 - ローカル実行時は `ansible/server_init_vars.yml` が最新であること。
 - SSH 鍵を使う作業では、必要に応じて `ssh-agent` を利用。
+- 接続ユーザーは用途で分離される（初回: `ansible/vars/connection_bootstrap.yml`、運用: `ansible/vars/connection_operations.yml`）。
 
 ## 1. GHCR PAT ローテーション（最重要）
 
@@ -65,12 +66,22 @@
 
 ### 1-2. 変数を更新
 
-- ローカル運用: `ansible/server_init_vars.yml` の `ghcr_token` を新トークンに更新。
+- ローカル運用: `ansible/server_init_vars.yml` の `ghcr_token` を更新。
 - GitHub Actions 運用: Repository `Settings` → `Secrets and variables` で該当 secret を更新。
 
 ### 1-3. サーバーへ反映
 
 ```bash
+make rotate-ghcr-token
+```
+
+上記は運用用接続ユーザー（`ssh-admin`）で実行される。初回構築時の `alma` 接続とは Makefile 側で分離済み。
+
+### 1-3a. 最短実行手順（迷ったらこれだけ）
+
+```bash
+cd art-gallery-maintenance-tools
+nano ansible/server_init_vars.yml
 make rotate-ghcr-token
 ```
 

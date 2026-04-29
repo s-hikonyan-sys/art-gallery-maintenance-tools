@@ -1,0 +1,109 @@
+---
+# 公開鍵の解決:
+# - 変数が指定されていればそれを優先
+# - admin 側は未指定時に init_ssh_key から公開鍵を導出
+# - deploy 側は未指定時に deploy_ssh_public_key_file を読む（任意）
+
+- name: Resolve admin SSH public key from provided value or init key
+  ansible.builtin.set_fact:
+    admin_ssh_public_key_resolved: >-
+      {{
+        admin_ssh_public_key
+        | default(
+            lookup('pipe', 'ssh-keygen -y -f ' ~ (init_ssh_key | quote)),
+            true
+          )
+      }}
+  tags:
+    - init-users
+    - init-admin-ssh
+
+- name: Resolve deploy SSH public key from provided value or .pub file
+  ansible.builtin.set_fact:
+    deploy_ssh_public_key_resolved: >-
+      {{
+        deploy_ssh_public_key
+        | default(
+            (
+              deploy_ssh_public_key_file is defined
+              and (deploy_ssh_public_key_file | length > 0)
+            )
+            | ternary(lookup('file', deploy_ssh_public_key_file), ''),
+            true
+          )
+      }}
+  tags:
+    - init-users
+
+---
+# ローカル実行では公開鍵文字列を vars に直書きせず、
+# *.pub ファイルまたは init_ssh_key から解決して利用できるようにする。
+# GitHub Actions から admin_ssh_public_key / deploy_ssh_public_key が注入される場合はそちらを優先。
+
+- name: Resolve admin SSH public key from provided value or init key
+  ansible.builtin.set_fact:
+    admin_ssh_public_key_resolved: >-
+      {{
+        admin_ssh_public_key
+        | default(
+            lookup('pipe', 'ssh-keygen -y -f ' ~ (init_ssh_key | quote)),
+            true
+          )
+      }}
+  tags:
+    - init-users
+    - init-admin-ssh
+
+- name: Resolve deploy SSH public key from provided value or .pub file
+  ansible.builtin.set_fact:
+    deploy_ssh_public_key_resolved: >-
+      {{
+        deploy_ssh_public_key
+        | default(
+            (
+              deploy_ssh_public_key_file is defined
+              and (deploy_ssh_public_key_file | length > 0)
+            )
+            | ternary(lookup('file', deploy_ssh_public_key_file), ''),
+            true
+          )
+      }}
+  tags:
+    - init-users
+
+---
+# ローカル実行では公開鍵文字列を vars に直書きせず、
+# *.pub ファイルまたは init_ssh_key から解決して利用できるようにする。
+# GitHub Actions から admin_ssh_public_key / deploy_ssh_public_key が注入される場合はそちらを優先。
+
+- name: Resolve admin SSH public key from provided value or init key
+  ansible.builtin.set_fact:
+    admin_ssh_public_key_resolved: >-
+      {{
+        admin_ssh_public_key
+        | default(
+            lookup('pipe', 'ssh-keygen -y -f ' ~ (init_ssh_key | quote)),
+            true
+          )
+      }}
+  tags:
+    - init-users
+    - init-admin-ssh
+
+- name: Resolve deploy SSH public key from provided value or .pub file
+  ansible.builtin.set_fact:
+    deploy_ssh_public_key_resolved: >-
+      {{
+        deploy_ssh_public_key
+        | default(
+            (
+              deploy_ssh_public_key_file is defined
+              and (deploy_ssh_public_key_file | length > 0)
+            )
+            | ternary(lookup('file', deploy_ssh_public_key_file), ''),
+            true
+          )
+      }}
+  tags:
+    - init-users
+

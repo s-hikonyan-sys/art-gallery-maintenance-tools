@@ -1,0 +1,3 @@
+---
+# 初回構築後（定期運用）用
+ansible_user: "ssh-admin"

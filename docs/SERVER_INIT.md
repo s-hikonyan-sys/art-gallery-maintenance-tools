@@ -169,7 +169,7 @@ nano server_init_vars.yml   # 各項目を設定
 | `deploy_ssh_public_key` | デプロイ用公開鍵（`PROD_SSH_PRIVATE_KEY` 対応・`artgallery` ユーザー） | `ssh-ed25519 AAAA...` |
 | `domain_name` | SSL 証明書発行対象ドメイン（`init-ssl` で利用） | `example.com` |
 | `certbot_email` | Let's Encrypt 通知メール | `you@example.com` |
-| `ghcr_token` | GitHub PAT（本運用は push + pull 前提: `write:packages` + `read:packages`） | `ghp_xxx...` |
+| `ghcr_token` | GitHub PAT（本運用は push + pull 前提） | `ghp_xxx...` |
 | `ghcr_username` | GitHub ユーザー名 | `s-hikonyan-sys` |
 
 **ローカル実行時の切り分け（重要）**
@@ -189,6 +189,8 @@ nano server_init_vars.yml   # 各項目を設定
 > **PAT 補足（fine-grained を使う場合）**: `Repository access` は `Only select repositories` を推奨し、GHCR の push/pull 対象リポジトリのみを選択する。`Tokens (classic)` には `Repository access` 設定はない。
 >
 > **対象リポジトリの考え方**: `art-gallery-release-tools` は workflow 実行元として必須。`art-gallery-backend` / `art-gallery-database` / `art-gallery-secrets` / `art-gallery-nginx`（+ `art-gallery-nginx-base`）は、GitHub ソース参照と GHCR イメージ運用の対象として選択する。詳細は `docs/SECURITY_ROTATION_RUNBOOK.md` を参照。
+>
+> **初回実行と運用実行の切り分け（接続ユーザー）**: 接続ユーザーは `ansible/vars/connection_bootstrap.yml`（初回=`alma`）と `ansible/vars/connection_operations.yml`（運用=`ssh-admin`）で分離している。
 
 #### `deploy_ssh_public_key` を管理鍵と分離する手順（推奨）
 
@@ -239,6 +241,7 @@ make server-init-no-ssl
 cd ansible && ansible-playbook playbook_server_init.yml \
   --inventory inventory/production_init.yml \
   --extra-vars "@server_init_vars.yml" \
+  --extra-vars "@vars/connection_operations.yml" \
   --tags "init-ssl"
 ```
 

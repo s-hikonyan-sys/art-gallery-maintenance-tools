@@ -1,5 +1,7 @@
 COMPOSE = docker compose -f /home/homepage/project/my_homepage/replace_work/art-gallery-maintenance-tools/local/docker-compose.local.yml
 ANSIBLE_DIR = /home/homepage/project/my_homepage/replace_work/art-gallery-maintenance-tools/ansible
+BOOTSTRAP_CONN_VARS = vars/connection_bootstrap.yml
+OPERATIONS_CONN_VARS = vars/connection_operations.yml
 
 .PHONY: help setup ghcr-login gen-secrets \
         start-infra start-dev-frontend start-full stop reset-db \
@@ -44,6 +46,7 @@ help:
 	@echo "  make tune-fail2ban                Fail2ban 設定反映（init-fail2ban）"
 	@echo "  make refresh-geo-block            ジオブロック再構築（init-firewall）"
 	@echo "  make verify-certbot-renew         certbot 更新ドライラン（サーバー上で実行）"
+	@echo "  ※ 接続ユーザーは vars/connection_*.yml で初回/運用を分離"
 	@echo ""
 	@echo "詳細は docs/local_dev_guide.md / docs/SERVER_INIT.md を参照してください。"
 
@@ -99,7 +102,8 @@ server-init: install-ansible-collections
 	fi
 	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \
 	  --inventory inventory/production_init.yml \
-	  --extra-vars "@server_init_vars.yml"
+	  --extra-vars "@server_init_vars.yml" \
+	  --extra-vars "@$(BOOTSTRAP_CONN_VARS)"
 
 server-init-no-ssl: install-ansible-collections
 	@if [ ! -f $(ANSIBLE_DIR)/server_init_vars.yml ]; then \
@@ -110,6 +114,7 @@ server-init-no-ssl: install-ansible-collections
 	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \
 	  --inventory inventory/production_init.yml \
 	  --extra-vars "@server_init_vars.yml" \
+	  --extra-vars "@$(BOOTSTRAP_CONN_VARS)" \
 	  --skip-tags "init-ssl"
 
 update-known-hosts:
@@ -126,36 +131,42 @@ rotate-ghcr-token:
 	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \
 	  --inventory inventory/production_init.yml \
 	  --extra-vars "@server_init_vars.yml" \
+	  --extra-vars "@$(OPERATIONS_CONN_VARS)" \
 	  --tags "init-ghcr"
 
 rotate-ssh-admin-key:
 	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \
 	  --inventory inventory/production_init.yml \
 	  --extra-vars "@server_init_vars.yml" \
+	  --extra-vars "@$(OPERATIONS_CONN_VARS)" \
 	  --tags "init-admin-ssh"
 
 rotate-deploy-key:
 	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \
 	  --inventory inventory/production_init.yml \
 	  --extra-vars "@server_init_vars.yml" \
+	  --extra-vars "@$(OPERATIONS_CONN_VARS)" \
 	  --tags "init-users"
 
 refresh-ssh-lockdown:
 	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \
 	  --inventory inventory/production_init.yml \
 	  --extra-vars "@server_init_vars.yml" \
+	  --extra-vars "@$(OPERATIONS_CONN_VARS)" \
 	  --tags "init-ssh-lockdown"
 
 tune-fail2ban:
 	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \
 	  --inventory inventory/production_init.yml \
 	  --extra-vars "@server_init_vars.yml" \
+	  --extra-vars "@$(OPERATIONS_CONN_VARS)" \
 	  --tags "init-fail2ban"
 
 refresh-geo-block:
 	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \
 	  --inventory inventory/production_init.yml \
 	  --extra-vars "@server_init_vars.yml" \
+	  --extra-vars "@$(OPERATIONS_CONN_VARS)" \
 	  --tags "init-firewall"
 
 verify-certbot-renew:
