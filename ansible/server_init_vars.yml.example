@@ -25,12 +25,6 @@ init_ssh_key: "~/.ssh/sakura_init_key"
 admin_ssh_public_key: "ssh-ed25519 AAAAC3Nza... from-sakura_init_key.pub"
 
 # ============================================================
-# デプロイ SSH 鍵 (GitHub Actions が接続する artgallery ユーザー用)
-# PROD_SSH_PRIVATE_KEY に対応する公開鍵の中身を貼り付け
-# ============================================================
-deploy_ssh_public_key: "ssh-ed25519 AAAAC3Nza... your-deploy-key-public-part"
-
-# ============================================================
 # SSL 証明書 (Let's Encrypt)
 # ============================================================
 # 証明書発行対象ドメイン（example.com はサンプル。実運用ドメインに置き換える）
@@ -51,7 +45,7 @@ ghcr_username: "s-hikonyan-sys"
 # 注意:
 # - 以下の項目は「この vars で設定するもの」ではなく、Playbook 実行後にサーバー側へ作成/反映される結果:
 #   - ssh-admin ユーザー作成 + admin_ssh_public_key 登録
-#   - artgallery ユーザー作成 + deploy_ssh_public_key 登録
+#   - artgallery ユーザー作成
 #   - AllowUsers ssh-admin 適用（alma の SSH ログイン禁止）
 # 自宅など固定グローバルIPを登録すると、Fail2ban による誤BANを避けやすい
 # fail2ban_ignore_ips:

@@ -7,7 +7,7 @@ OPERATIONS_CONN_VARS = vars/connection_operations.yml
         start-infra start-dev-frontend start-full stop reset-db \
         logs ps \
         server-init server-init-no-ssl install-ansible-collections update-known-hosts \
-        server-verify rotate-ghcr-token rotate-ssh-admin-key rotate-deploy-key \
+        server-verify rotate-ghcr-token rotate-ssh-admin-key \
         refresh-ssh-lockdown tune-fail2ban refresh-geo-block verify-certbot-renew
 
 help:
@@ -41,7 +41,6 @@ help:
 	@echo "--- 定期運用（ローテーション / 見直し）---"
 	@echo "  make rotate-ghcr-token            GHCR トークン反映（init-ghcr のみ）"
 	@echo "  make rotate-ssh-admin-key         ssh-admin 公開鍵反映（init-admin-ssh）"
-	@echo "  make rotate-deploy-key            artgallery 公開鍵反映（init-users）"
 	@echo "  make refresh-ssh-lockdown         SSH 制限再適用（init-ssh-lockdown）"
 	@echo "  make tune-fail2ban                Fail2ban 設定反映（init-fail2ban）"
 	@echo "  make refresh-geo-block            ジオブロック再構築（init-firewall）"
@@ -140,13 +139,6 @@ rotate-ssh-admin-key:
 	  --extra-vars "@server_init_vars.yml" \
 	  --extra-vars "@$(OPERATIONS_CONN_VARS)" \
 	  --tags "init-admin-ssh"
-
-rotate-deploy-key:
-	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \
-	  --inventory inventory/production_init.yml \
-	  --extra-vars "@server_init_vars.yml" \
-	  --extra-vars "@$(OPERATIONS_CONN_VARS)" \
-	  --tags "init-users"
 
 refresh-ssh-lockdown:
 	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \

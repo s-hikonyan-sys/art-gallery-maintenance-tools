@@ -104,18 +104,6 @@ make rotate-ssh-admin-key
 
 4. 新鍵で `ssh-admin@YOUR_VPS_GLOBAL_IP` へログイン確認後、旧鍵を段階的に廃止。
 
-### 2-2. デプロイ用鍵（artgallery）更新
-
-1. デプロイ専用の新しい鍵ペアを作成。
-2. `ansible/server_init_vars.yml` の `deploy_ssh_public_key` を更新。
-3. 反映:
-
-```bash
-make rotate-deploy-key
-```
-
-4. デプロイツール側の秘密鍵設定も同時に差し替えて疎通確認。
-
 ## 3. known_hosts 更新
 
 サーバー再構築やホスト鍵変更時に実施します。

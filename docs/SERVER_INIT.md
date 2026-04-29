@@ -49,10 +49,11 @@ Ansible を実行する前に、ローカル（WSL2）で SSH 鍵を用意し、
 ### 0-1. ローカル WSL2 で SSH 鍵を作成（初回のみ）
 
 `alma` ユーザー接続用の鍵が**まだなければ**作成する。既存の鍵を使う場合はスキップ。
+この鍵（または同じ公開鍵を `ssh-admin` に登録した対応鍵）は、Playbook 完了後の `ssh-admin` 接続でもそのまま使える。
 
 ```bash
-# Ed25519 鍵を作成（推奨）
-ssh-keygen -t ed25519 -C "sakura-vps-init" -f ~/.ssh/sakura_init_key
+# Ed25519 鍵を作成（GitHub Actions 利用のためパスフレーズなし）
+ssh-keygen -t ed25519 -C "sakura-vps-init" -f ~/.ssh/sakura_init_key -N ""
 
 # 作成された鍵を確認
 ls -la ~/.ssh/sakura_init_key*
@@ -61,6 +62,8 @@ ls -la ~/.ssh/sakura_init_key*
 ```
 
 > `server_init_vars.yml` の `init_ssh_key` にはこの秘密鍵のパス（`~/.ssh/sakura_init_key`）を設定する。
+>
+> **GitHub Actions で使う鍵について:** Actions は対話入力できないため、`PROD_SSH_PRIVATE_KEY` に設定する秘密鍵はパスフレーズなし必須。
 
 ---
 
@@ -112,7 +115,7 @@ ssh -i ~/.ssh/sakura_init_key alma@YOUR_VPS_GLOBAL_IP
 
 > **成功の目安:** `alma` ユーザーの**ログインパスワード**（パスワード認証）は求められず、公開鍵だけでログインできること。Phase 1 の Ansible はこの鍵で **`alma` として**接続する（完了後は `ssh-admin` のみが SSH 可能になる）。
 >
-> **鍵のパスフレーズについて:** 0-1 で秘密鍵にパスフレーズを付けた場合、`Enter passphrase for key '.../sakura_init_key':` のように**鍵のパスフレーズ**を聞かれるのは正常である（VPS 側のパスワード認証とは別）。毎回の入力を減らすには `eval "$(ssh-agent -s)"` のあと `ssh-add ~/.ssh/sakura_init_key` でエージェントに載せる。
+> 本手順では `sakura_init_key` をパスフレーズなしで作成する前提のため、`Enter passphrase for key ...` は表示されない。
 
 ---
 
@@ -166,7 +169,6 @@ nano server_init_vars.yml   # 各項目を設定
 | `init_host` | VPS の IP アドレス | `YOUR_VPS_GLOBAL_IP` |
 | `init_ssh_key` | AlmaLinux 初期ユーザー用 SSH 秘密鍵 | `~/.ssh/sakura_init_key` |
 | `admin_ssh_public_key` | `ssh-admin` に登録する公開鍵の1行（通常は `sakura_init_key.pub` と同じ） | `ssh-ed25519 AAAA...` |
-| `deploy_ssh_public_key` | デプロイ用公開鍵（`PROD_SSH_PRIVATE_KEY` 対応・`artgallery` ユーザー） | `ssh-ed25519 AAAA...` |
 | `domain_name` | SSL 証明書発行対象ドメイン（`init-ssl` で利用） | `example.com` |
 | `certbot_email` | Let's Encrypt 通知メール | `you@example.com` |
 | `ghcr_token` | GitHub PAT（本運用は push + pull 前提） | `ghp_xxx...` |
@@ -174,14 +176,12 @@ nano server_init_vars.yml   # 各項目を設定
 
 **ローカル実行時の切り分け（重要）**
 
-- **実行前に手元で設定が必要**: `init_host`, `init_ssh_key`, `admin_ssh_public_key`, `deploy_ssh_public_key`, `domain_name`, `certbot_email`, `ghcr_token`, `ghcr_username`
+- **実行前に手元で設定が必要**: `init_host`, `init_ssh_key`, `admin_ssh_public_key`, `domain_name`, `certbot_email`, `ghcr_token`, `ghcr_username`
 - **この時点では未作成でOK（Playbook がサーバー側に作る）**: `ssh-admin` ユーザー、`artgallery` ユーザー、各 `authorized_keys`、`AllowUsers ssh-admin`
 - **ローカル実行後に期待される状態**: `ssh-admin` で SSH 可能、`alma` は SSH 不可、`artgallery` はデプロイ専用（SSH 不可）
 
 > **`admin_ssh_public_key` の確認方法**: 0-1〜0-3 で使った公開鍵ファイルの内容をそのまま貼る（例: `cat ~/.ssh/sakura_init_key.pub`）。**`init_ssh_key` に対応する公開鍵と一致**させないと、Playbook 完了後に `ssh-admin` でログインできず詰む。
 >
-> **`deploy_ssh_public_key` の確認方法**: `PROD_SSH_PRIVATE_KEY` に対応する公開鍵（`~/.ssh/xxx.pub` または `ssh-keygen -y -f ~/.ssh/xxx`）。GitHub Actions が `artgallery` に接続する鍵であり、管理用の `sakura_init_key` と別でもよい。
-
 > **`domain_name` の設定**: `init-ssl` が `certbot certonly --standalone -d <domain>` を実行するときの対象ドメイン。`example.com` はサンプルなので、実行時は実運用ドメインに置き換える。
 
 > **GitHub Actions 実行時との違い**: `.github/workflows/server_init.yml` では `server_init_vars.yml` をワークフロー内で生成し、`init_host`・`domain_name` などを Variables/Secrets から注入する。`admin_ssh_public_key` も `INIT_SSH_PRIVATE_KEY` から自動算出される。
@@ -192,32 +192,22 @@ nano server_init_vars.yml   # 各項目を設定
 >
 > **初回実行と運用実行の切り分け（接続ユーザー）**: 接続ユーザーは `ansible/vars/connection_bootstrap.yml`（初回=`alma`）と `ansible/vars/connection_operations.yml`（運用=`ssh-admin`）で分離している。
 
-#### `deploy_ssh_public_key` を管理鍵と分離する手順（推奨）
+#### `PROD_SSH_PRIVATE_KEY`（`ssh-admin` 接続用）を準備する手順（必須）
 
-`sakura_init_key`（管理用）とは別に、`artgallery` デプロイ専用鍵を作って運用できる。
-
-```bash
-# 1) デプロイ専用鍵を新規作成（既存の管理鍵とは別ファイル）
-ssh-keygen -t ed25519 -C "artgallery-deploy-key" -f ~/.ssh/artgallery_deploy_key
-
-# 2) 公開鍵を server_init_vars.yml に設定するため内容を取得
-cat ~/.ssh/artgallery_deploy_key.pub
-```
-
-`server_init_vars.yml` には以下のように設定する:
-
-```yaml
-deploy_ssh_public_key: "ssh-ed25519 AAAA... artgallery-deploy-key"
-```
-
-Playbook 実行後、GitHub Actions でデプロイするには `art-gallery-release-tools` 側の `PROD_SSH_PRIVATE_KEY` を **同じ鍵ペアの秘密鍵**（`~/.ssh/artgallery_deploy_key` の内容）に更新する。
+`art-gallery-release-tools` の GitHub Actions は `PROD_SSH_USER`（通常 `ssh-admin`）で接続する。  
+そのため `PROD_SSH_PRIVATE_KEY` は **`admin_ssh_public_key` と対になる秘密鍵**を設定する。
 
 ```bash
-# 秘密鍵の内容をコピーして GitHub Secret に登録
-cat ~/.ssh/artgallery_deploy_key
+# 1) ssh-admin 接続確認
+ssh -i ~/.ssh/sakura_init_key ssh-admin@YOUR_VPS_GLOBAL_IP
 ```
 
-> 注意: `deploy_ssh_public_key` と `PROD_SSH_PRIVATE_KEY` は必ず同一鍵ペアで揃えること。ずれるとデプロイ時に SSH 認証で失敗する。
+GitHub Secret には以下を設定する:
+
+```bash
+# PROD_SSH_PRIVATE_KEY に登録するため秘密鍵内容を取得
+cat ~/.ssh/sakura_init_key
+```
 
 ### 1-2. Ansible collections をインストール
 
@@ -269,7 +259,7 @@ nslookup example.com
 Playbook が成功したら、**別のターミナル**で `ssh-admin` 接続を試す（既存の `alma` セッションは維持されることが多いが、設定誤りのときの保険になる）。
 
 ```bash
-ssh -i ~/.ssh/sakura_init_key ssh-admin@YOUR_VPS_GLOBAL_IP
+ssh -i <ssh-admin用秘密鍵> ssh-admin@YOUR_VPS_GLOBAL_IP
 ```
 
 問題なければ `alma` への SSH は拒否される（`Permission denied`）ことを確認してよい。
@@ -388,7 +378,6 @@ YOUR_VPS_GLOBAL_IP ecdsa-sha2-nistp256 AAAA...
 | `CERTBOT_EMAIL` | Variable | Let's Encrypt 通知メールアドレス |
 | `GH_OWNER` | Variable | GHCR オーナー名（例: `s-hikonyan-sys`） |
 | `INIT_SSH_PRIVATE_KEY` | Secret | 初回接続用秘密鍵（`alma` 接続で使用） |
-| `PROD_SSH_PUBLIC_KEY` | Secret | デプロイ用公開鍵（`artgallery` の `authorized_keys` に登録） |
 | `GH_TOKEN_FOR_GHCR` | Secret | GHCR 認証用トークン（`ghcr_token` として注入） |
 
 次に、`art-gallery-release-tools` リポジトリの Settings → Secrets and variables を更新:
@@ -403,7 +392,7 @@ YOUR_VPS_GLOBAL_IP ecdsa-sha2-nistp256 AAAA...
 |:---|:---|:---|
 | `PROD_HOST` | Variable | VPS の IP（変わっていれば更新） |
 | `PROD_SSH_USER` | Variable | **`ssh-admin`**（本プレイブック完了後の SSH ユーザー。未設定なら設定） |
-| `PROD_SSH_PRIVATE_KEY` | Secret | デプロイ用秘密鍵（変わらなければ不要） |
+| `PROD_SSH_PRIVATE_KEY` | Secret | `ssh-admin` 接続用秘密鍵（`admin_ssh_public_key` と対応。Actions のためパスフレーズなし必須） |
 
 `PROD_DOMAIN_NAME` は `art-gallery-release-tools` ではなく、`art-gallery-maintenance-tools` の `server_init` ワークフロー（`.github/workflows/server_init.yml`）で参照する。
 
@@ -434,7 +423,7 @@ YOUR_VPS_GLOBAL_IP ecdsa-sha2-nistp256 AAAA...
 ```bash
 export TARGET_HOST="YOUR_VPS_GLOBAL_IP"
 export TARGET_USER="ssh-admin"
-export TARGET_KEY="$HOME/.ssh/sakura_init_key"
+export TARGET_KEY="$HOME/.ssh/<ssh-admin_key>"
 export TARGET_DOMAIN="your-domain.com"  # 任意
 make server-verify
 ```
@@ -446,7 +435,7 @@ cd art-gallery-maintenance-tools
 pytest -q tests/testinfra \
   --target-host "YOUR_VPS_GLOBAL_IP" \
   --target-user "ssh-admin" \
-  --target-key "$HOME/.ssh/sakura_init_key" \
+  --target-key "$HOME/.ssh/<ssh-admin_key>" \
   --target-domain "your-domain.com"
 ```
 
@@ -470,7 +459,7 @@ systemctl status sshd
 想定どおりである。`AllowUsers ssh-admin` 適用後は **`ssh-admin` で接続**する。
 
 ```bash
-ssh -i ~/.ssh/sakura_init_key ssh-admin@YOUR_VPS_GLOBAL_IP
+ssh -i <ssh-admin用秘密鍵> ssh-admin@YOUR_VPS_GLOBAL_IP
 ```
 
 ### Ansible 実行中に `UNREACHABLE` エラー
@@ -478,8 +467,8 @@ ssh -i ~/.ssh/sakura_init_key ssh-admin@YOUR_VPS_GLOBAL_IP
 ```bash
 # Phase 1 実行中は alma で接続テスト
 ssh -i ~/.ssh/sakura_init_key alma@YOUR_VPS_GLOBAL_IP
-# Playbook 成功後は ssh-admin で
-ssh -i ~/.ssh/sakura_init_key ssh-admin@YOUR_VPS_GLOBAL_IP
+# Playbook 成功後は ssh-admin で（ssh-admin 用秘密鍵を指定）
+ssh -i <ssh-admin用秘密鍵> ssh-admin@YOUR_VPS_GLOBAL_IP
 # known_hosts をクリア（OS 再インストール後は必須）
 ssh-keygen -R YOUR_VPS_GLOBAL_IP
 ```

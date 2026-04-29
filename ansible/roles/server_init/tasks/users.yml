@@ -1,6 +1,6 @@
 ---
 # アプリケーション実行ユーザーの作成
-# Ansible / GitHub Actions がデプロイ時に接続するユーザー: {{ app_user }}
+# SSH 接続は ssh-admin を使用し、app_user はアプリ実行専用。
 
 - name: Create app user group
   ansible.builtin.group:
@@ -29,14 +29,6 @@
     mode: '0700'
     owner: "{{ app_user }}"
     group: "{{ app_user }}"
-  tags:
-    - init-users
-
-- name: Register deployment SSH public key for app user
-  ansible.builtin.authorized_key:
-    user: "{{ app_user }}"
-    key: "{{ deploy_ssh_public_key | mandatory('deploy_ssh_public_key must be set in server_init_vars.yml') }}"
-    state: present
   tags:
     - init-users
 
