@@ -379,7 +379,19 @@ YOUR_VPS_GLOBAL_IP ecdsa-sha2-nistp256 AAAA...
 
 ### 2-2. GitHub Secrets / Variables を更新
 
-`art-gallery-release-tools` リポジトリの Settings → Secrets and variables:
+まず、`art-gallery-maintenance-tools` リポジトリ（`server_init` workflow 用）で以下を定義/確認する:
+
+| 名前 | 種別 | 内容 |
+|:---|:---|:---|
+| `PROD_HOST` | Variable | 初期化対象 VPS の IP（`server_init` の接続先） |
+| `PROD_DOMAIN_NAME` | Variable | SSL 証明書発行対象ドメイン |
+| `CERTBOT_EMAIL` | Variable | Let's Encrypt 通知メールアドレス |
+| `GITHUB_OWNER` | Variable | GHCR オーナー名（例: `s-hikonyan-sys`） |
+| `INIT_SSH_PRIVATE_KEY` | Secret | 初回接続用秘密鍵（`alma` 接続で使用） |
+| `PROD_SSH_PUBLIC_KEY` | Secret | デプロイ用公開鍵（`artgallery` の `authorized_keys` に登録） |
+| `GH_TOKEN_FOR_GHCR` | Secret | GHCR 認証用トークン（`ghcr_token` として注入） |
+
+次に、`art-gallery-release-tools` リポジトリの Settings → Secrets and variables を更新:
 
 | 名前 | 種別 | 更新内容 |
 |:---|:---|:---|
@@ -390,9 +402,10 @@ YOUR_VPS_GLOBAL_IP ecdsa-sha2-nistp256 AAAA...
 | 名前 | 種別 | 内容 |
 |:---|:---|:---|
 | `PROD_HOST` | Variable | VPS の IP（変わっていれば更新） |
-| `PROD_DOMAIN_NAME` | Variable | SSL 証明書発行対象ドメイン（例: `your-domain.com`） |
 | `PROD_SSH_USER` | Variable | **`ssh-admin`**（本プレイブック完了後の SSH ユーザー。未設定なら設定） |
 | `PROD_SSH_PRIVATE_KEY` | Secret | デプロイ用秘密鍵（変わらなければ不要） |
+
+`PROD_DOMAIN_NAME` は `art-gallery-release-tools` ではなく、`art-gallery-maintenance-tools` の `server_init` ワークフロー（`.github/workflows/server_init.yml`）で参照する。
 
 ---
 
