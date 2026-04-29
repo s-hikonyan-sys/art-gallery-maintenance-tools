@@ -32,9 +32,86 @@ OS 再インストール後に本番サーバーを復旧する手順書。
 
 | フェーズ | 作業場所 | ツール |
 |:---|:---|:---|
+| **Phase 0**: OS インストール後の手動作業 | ローカル WSL2 + さくらのVPS シリアルコンソール | `ssh-keygen`, `ssh-copy-id` |
 | Phase 1: Ansible 実行 | ローカル WSL2 または GitHub Actions | `make server-init` |
 | Phase 2: Secrets 更新 | GitHub | ブラウザ |
 | Phase 3: アプリデプロイ | GitHub Actions | `art-gallery-release-tools` |
+
+---
+
+## Phase 0: OS インストール後の手動作業
+
+Ansible を実行する前に、ローカル（WSL2）で SSH 鍵を用意し、VPS に登録する必要がある。
+
+### 0-1. ローカル WSL2 で SSH 鍵を作成（初回のみ）
+
+`alma` ユーザー接続用の鍵が**まだなければ**作成する。既存の鍵を使う場合はスキップ。
+
+```bash
+# Ed25519 鍵を作成（推奨）
+ssh-keygen -t ed25519 -C "sakura-vps-init" -f ~/.ssh/sakura_init_key
+
+# 作成された鍵を確認
+ls -la ~/.ssh/sakura_init_key*
+# sakura_init_key      ← 秘密鍵（絶対に外部に出さない）
+# sakura_init_key.pub  ← 公開鍵（VPS に登録するもの）
+```
+
+> `server_init_vars.yml` の `init_ssh_key` にはこの秘密鍵のパス（`~/.ssh/sakura_init_key`）を設定する。
+
+---
+
+### 0-2. VPS 起動後の初回 SSH 接続確認
+
+再起動が完了したら、パスワード認証で一度 `alma` ユーザーとしてログインできるか確認する。
+
+```bash
+# OS インストール後は known_hosts に古いホスト鍵が残っている場合があるのでクリア
+ssh-keygen -R 219.94.248.165
+
+# パスワードで接続テスト（インストール時に設定したパスワードを入力）
+ssh alma@219.94.248.165
+```
+
+接続できたら `exit` で一度切断する。
+
+---
+
+### 0-3. ローカルの SSH 公開鍵を VPS に登録
+
+`ssh-copy-id` を使って公開鍵を `alma` ユーザーの `authorized_keys` に登録する。
+
+```bash
+# 0-1 で作成した公開鍵を VPS に転送
+ssh-copy-id -i ~/.ssh/sakura_init_key.pub alma@219.94.248.165
+
+# 登録確認: 公開鍵認証で接続できるか確認
+ssh -i ~/.ssh/sakura_init_key alma@219.94.248.165
+```
+
+> パスワードなしで接続できれば成功。以後の Ansible はこの鍵で接続する。
+
+---
+
+### 0-4. SSH ホスト鍵のフィンガープリントを確認（推奨）
+
+中間者攻撃（MITM）防止のため、シリアルコンソールで取得したフィンガープリントと一致するか確認する。
+
+```bash
+# さくらのVPS シリアルコンソールから実行
+ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+# 例: 256 SHA256:XXXXXXXXXX... no comment (ED25519)
+```
+
+```bash
+# ローカルで接続時に表示されるフィンガープリントと一致するか確認してから yes を入力
+ssh -i ~/.ssh/sakura_init_key alma@219.94.248.165
+# The authenticity of host '219.94.248.165' can't be established.
+# ED25519 key fingerprint is SHA256:XXXXXXXXXX...
+# Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+```
+
+参考: [さくらのVPS セキュリティ設定ガイド - SSH 接続でサーバーにログイン](https://manual.sakura.ad.jp/vps/support/security/firstsecurity.html)
 
 ---
 
