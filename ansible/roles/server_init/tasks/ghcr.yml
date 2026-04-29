@@ -13,22 +13,22 @@
     - init-ghcr
 
 - name: Login to GHCR as app user
-  ansible.builtin.shell: |
-    echo "{{ ghcr_token | mandatory('ghcr_token must be set in server_init_vars.yml') }}" | \
-    docker login {{ ghcr_registry }} \
-      --username "{{ ghcr_username | mandatory('ghcr_username must be set in server_init_vars.yml') }}" \
-      --password-stdin
+  ansible.builtin.command:
+    argv:
+      - docker
+      - login
+      - "{{ ghcr_registry }}"
+      - --username
+      - "{{ ghcr_username | mandatory('ghcr_username must be set in server_init_vars.yml') }}"
+      - --password-stdin
+    stdin: "{{ ghcr_token | mandatory('ghcr_token must be set in server_init_vars.yml') }}"
   become: yes
-  become_user: "{{ app_user }}"
+  environment:
+    DOCKER_CONFIG: "/home/{{ app_user }}/.docker"
   no_log: true
+  changed_when: false
   register: ghcr_login_result
-  tags:
-    - init-ghcr
-
-- name: Verify GHCR login succeeded
-  ansible.builtin.fail:
-    msg: "GHCR ログインに失敗しました。ghcr_token と ghcr_username を確認してください。"
-  when: ghcr_login_result.rc != 0
+  failed_when: ghcr_login_result.rc != 0
   tags:
     - init-ghcr
 

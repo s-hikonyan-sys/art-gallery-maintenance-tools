@@ -4,7 +4,8 @@ ANSIBLE_DIR = /home/homepage/project/my_homepage/replace_work/art-gallery-mainte
 .PHONY: help setup ghcr-login gen-secrets \
         start-infra start-dev-frontend start-full stop reset-db \
         logs ps \
-        server-init server-init-no-ssl install-ansible-collections update-known-hosts
+        server-init server-init-no-ssl install-ansible-collections update-known-hosts \
+        server-verify
 
 help:
 	@echo "============================================================"
@@ -32,6 +33,7 @@ help:
 	@echo "  make server-init                  本番サーバー初期構築（SSL / Fail2ban / ジオブロック含む）"
 	@echo "  make server-init-no-ssl           本番サーバー初期構築（SSL のみスキップ）"
 	@echo "  make update-known-hosts           SSH ホスト鍵を取得してコピー"
+	@echo "  make server-verify                pytest + testinfra でサーバー状態を検証"
 	@echo ""
 	@echo "詳細は docs/local_dev_guide.md / docs/SERVER_INIT.md を参照してください。"
 
@@ -106,3 +108,6 @@ update-known-hosts:
 	  ssh-keyscan -t ecdsa $$vps_ip && \
 	  echo "" && \
 	  echo "👆 上記の行を GitHub Secrets の PROD_SSH_KNOWN_HOSTS に登録してください。"
+
+server-verify:
+	pytest -q /home/homepage/project/my_homepage/replace_work/art-gallery-maintenance-tools/tests/testinfra

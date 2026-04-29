@@ -80,6 +80,24 @@ ssh alma@YOUR_VPS_GLOBAL_IP
 
 ---
 
+### 0-2a. さくらVPS パケットフィルターの推奨運用
+
+さくらVPS のパケットフィルター（コントロールパネル側）と、OS 内の firewalld は**別レイヤー**。  
+初期化中は次の順序で開放すると安全かつ詰まりにくい。
+
+1. **OS 作成直後（Ansible 実行前）**  
+   - 最小開放: `SSH(22)` のみ  
+   - 可能なら送信元を自宅 IP / 作業元 IP に限定
+2. **`init-ssl` を実行する直前**  
+   - `HTTP(80)` と `HTTPS(443)` を追加で開放  
+   - `certbot certonly --standalone` の HTTP-01 検証で `80` が必須
+3. **Ansible 完了後の通常運用**  
+   - `22/80/443` を維持（SSH は必要に応じて送信元制限）
+
+> 80 番を開け忘れると、Let's Encrypt 検証で `Timeout during connect (likely firewall problem)` になりやすい。
+
+---
+
 ### 0-3. ローカルの SSH 公開鍵を VPS に登録
 
 `ssh-copy-id` を使って公開鍵を `alma` ユーザーの `authorized_keys` に登録する。
@@ -226,6 +244,7 @@ cd ansible && ansible-playbook playbook_server_init.yml \
 
 - ドメインの A レコードが `YOUR_VPS_GLOBAL_IP` を向いている
 - 80/443 が firewalld で許可されている（本 Playbook デフォルトは許可）
+- さくらVPS パケットフィルターでも 80/443 が開放されている
 - `certbot_email` が `server_init_vars.yml` に設定済み
 
 確認例:
@@ -381,6 +400,34 @@ YOUR_VPS_GLOBAL_IP ecdsa-sha2-nistp256 AAAA...
 4. deploy_backend.yml           → Backend デプロイ
 5. deploy_frontend.yml          → Frontend デプロイ
 6. deploy_nginx.yml             → Nginx デプロイ
+```
+
+---
+
+## Phase 4: 検証テスト（任意）
+
+`pytest + testinfra` で、`server-init` 後の状態（sshd/docker/firewalld/AllowUsers/certbot timer 等）を疎結合に検証できる。  
+詳細は `docs/SERVER_VERIFY.md` を参照。
+
+最短実行例:
+
+```bash
+export TARGET_HOST="YOUR_VPS_GLOBAL_IP"
+export TARGET_USER="ssh-admin"
+export TARGET_KEY="$HOME/.ssh/sakura_init_key"
+export TARGET_DOMAIN="your-domain.com"  # 任意
+make server-verify
+```
+
+引数で直接指定する場合:
+
+```bash
+cd /home/homepage/project/my_homepage/replace_work/art-gallery-maintenance-tools
+pytest -q tests/testinfra \
+  --target-host "YOUR_VPS_GLOBAL_IP" \
+  --target-user "ssh-admin" \
+  --target-key "$HOME/.ssh/sakura_init_key" \
+  --target-domain "your-domain.com"
 ```
 
 ---

@@ -61,6 +61,8 @@ nano ansible/server_init_vars.yml
 make server-init
 ```
 
+初期構築後の検証テスト（pytest + testinfra）は [`docs/SERVER_VERIFY.md`](docs/SERVER_VERIFY.md) を参照してください。
+
 ## 前提条件
 
 - Windows + WSL2 (Ubuntu)

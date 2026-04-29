@@ -58,7 +58,7 @@
     - name: Merge zone files into single CIDR list
       ansible.builtin.shell: |
         set -euo pipefail
-        MERGED="{{ ipdeny_tmp.path }}/merged.zone"
+        MERGED="{{ ipdeny_tmp.path }}/merged.cidr"
         : > "$MERGED"
         for z in "{{ ipdeny_tmp.path }}"/*.zone; do
           [ -f "$z" ] || continue
@@ -95,7 +95,7 @@
         cmd: >-
           firewall-cmd --permanent
           --ipset=blocked_web_countries
-          --add-entries-from-file={{ ipdeny_tmp.path }}/merged.zone
+          --add-entries-from-file={{ ipdeny_tmp.path }}/merged.cidr
       register: fw_ipset_entries
       changed_when: fw_ipset_entries.rc == 0
       failed_when: fw_ipset_entries.rc != 0
