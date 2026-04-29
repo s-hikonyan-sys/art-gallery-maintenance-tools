@@ -11,6 +11,15 @@ Ansible の `inventory` / `group_vars` / `server_init_vars.yml` は読まず、*
 python3 -m pip install --user pytest testinfra
 ```
 
+`pytest` コマンドが見つからない / `testinfra` が import できない場合は、`python3 -m` 形式で実行する。
+
+`TARGET_KEY` がパスフレーズ付き鍵の場合、事前に `ssh-agent` へ鍵を読み込む（未実施だと認証失敗しやすい）。
+
+```bash
+eval "$(ssh-agent -s)"
+ssh-add "$HOME/.ssh/sakura_init_key"
+```
+
 ## 2. 検証対象
 
 `tests/testinfra/test_server_init.py` は以下をチェックする。
@@ -22,6 +31,8 @@ python3 -m pip install --user pytest testinfra
 - firewalld `public` zone で `ssh/http/https` が許可
 - `snap.certbot.renew.timer` の有効化
 - （任意）証明書一覧に対象ドメインが含まれること
+
+> 注: 一部テストは `sudo -n` を使って確認するため、`ssh-admin` にパスワード不要 sudo が設定済みであることを前提とする。
 
 ## 3. 実行方法
 
@@ -38,11 +49,29 @@ cd art-gallery-maintenance-tools
 pytest -q tests/testinfra
 ```
 
+PATH の都合で `pytest` が見つからない環境では:
+
+```bash
+cd art-gallery-maintenance-tools
+python3 -m pytest -q tests/testinfra
+```
+
 ### 方法B: CLI 引数で指定
 
 ```bash
 cd art-gallery-maintenance-tools
 pytest -q tests/testinfra \
+  --target-host "YOUR_VPS_GLOBAL_IP" \
+  --target-user "ssh-admin" \
+  --target-key "$HOME/.ssh/sakura_init_key" \
+  --target-domain "your-domain.com"
+```
+
+同様に `python3 -m` 形式でも実行可能:
+
+```bash
+cd art-gallery-maintenance-tools
+python3 -m pytest -q tests/testinfra \
   --target-host "YOUR_VPS_GLOBAL_IP" \
   --target-user "ssh-admin" \
   --target-key "$HOME/.ssh/sakura_init_key" \

@@ -62,6 +62,7 @@ make server-init
 ```
 
 初期構築後の検証テスト（pytest + testinfra）は [`docs/SERVER_VERIFY.md`](docs/SERVER_VERIFY.md) を参照してください。
+定期的なセキュリティ運用（PAT/SSH鍵ローテーション、Fail2ban/ジオブロック見直し、Certbot更新確認）は [`docs/SECURITY_ROTATION_RUNBOOK.md`](docs/SECURITY_ROTATION_RUNBOOK.md) を参照してください。
 
 ## 前提条件
 

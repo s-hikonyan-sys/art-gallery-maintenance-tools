@@ -17,13 +17,12 @@ def test_ssh_admin_user_exists(host):
 
 
 def test_sshd_config_has_allowusers(host):
-    config = host.file("/etc/ssh/sshd_config")
-    assert config.exists
-    assert config.contains(r"^AllowUsers\s+ssh-admin$")
+    cmd = host.run(r"sudo -n grep -Eq '^AllowUsers[[:space:]]+ssh-admin$' /etc/ssh/sshd_config")
+    assert cmd.rc == 0
 
 
 def test_firewalld_services(host):
-    cmd = host.run("firewall-cmd --list-services --zone=public")
+    cmd = host.run("sudo -n firewall-cmd --list-services --zone=public")
     assert cmd.rc == 0
     services = cmd.stdout.split()
     assert "ssh" in services
@@ -41,6 +40,6 @@ def test_certificate_domain(host, target):
     domain = target.get("domain")
     if not domain:
         return
-    certs = host.run("certbot certificates")
+    certs = host.run("sudo -n certbot certificates")
     assert certs.rc == 0
     assert domain in certs.stdout

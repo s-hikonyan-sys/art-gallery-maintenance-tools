@@ -430,6 +430,8 @@ pytest -q tests/testinfra \
   --target-domain "your-domain.com"
 ```
 
+定期運用（GHCR PAT 更新、SSH 鍵ローテーション、`known_hosts` 更新、Fail2ban/ジオブロック見直し、Certbot 更新確認）は `docs/SECURITY_ROTATION_RUNBOOK.md` を参照。
+
 ---
 
 ## トラブルシュート

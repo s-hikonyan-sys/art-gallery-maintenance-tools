@@ -5,7 +5,8 @@ ANSIBLE_DIR = /home/homepage/project/my_homepage/replace_work/art-gallery-mainte
         start-infra start-dev-frontend start-full stop reset-db \
         logs ps \
         server-init server-init-no-ssl install-ansible-collections update-known-hosts \
-        server-verify
+        server-verify rotate-ghcr-token rotate-ssh-admin-key rotate-deploy-key \
+        refresh-ssh-lockdown tune-fail2ban refresh-geo-block verify-certbot-renew
 
 help:
 	@echo "============================================================"
@@ -34,6 +35,15 @@ help:
 	@echo "  make server-init-no-ssl           本番サーバー初期構築（SSL のみスキップ）"
 	@echo "  make update-known-hosts           SSH ホスト鍵を取得してコピー"
 	@echo "  make server-verify                pytest + testinfra でサーバー状態を検証"
+	@echo ""
+	@echo "--- 定期運用（ローテーション / 見直し）---"
+	@echo "  make rotate-ghcr-token            GHCR トークン反映（init-ghcr のみ）"
+	@echo "  make rotate-ssh-admin-key         ssh-admin 公開鍵反映（init-admin-ssh）"
+	@echo "  make rotate-deploy-key            artgallery 公開鍵反映（init-users）"
+	@echo "  make refresh-ssh-lockdown         SSH 制限再適用（init-ssh-lockdown）"
+	@echo "  make tune-fail2ban                Fail2ban 設定反映（init-fail2ban）"
+	@echo "  make refresh-geo-block            ジオブロック再構築（init-firewall）"
+	@echo "  make verify-certbot-renew         certbot 更新ドライラン（サーバー上で実行）"
 	@echo ""
 	@echo "詳細は docs/local_dev_guide.md / docs/SERVER_INIT.md を参照してください。"
 
@@ -111,3 +121,51 @@ update-known-hosts:
 
 server-verify:
 	pytest -q /home/homepage/project/my_homepage/replace_work/art-gallery-maintenance-tools/tests/testinfra
+
+rotate-ghcr-token:
+	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \
+	  --inventory inventory/production_init.yml \
+	  --extra-vars "@server_init_vars.yml" \
+	  --tags "init-ghcr"
+
+rotate-ssh-admin-key:
+	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \
+	  --inventory inventory/production_init.yml \
+	  --extra-vars "@server_init_vars.yml" \
+	  --tags "init-admin-ssh"
+
+rotate-deploy-key:
+	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \
+	  --inventory inventory/production_init.yml \
+	  --extra-vars "@server_init_vars.yml" \
+	  --tags "init-users"
+
+refresh-ssh-lockdown:
+	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \
+	  --inventory inventory/production_init.yml \
+	  --extra-vars "@server_init_vars.yml" \
+	  --tags "init-ssh-lockdown"
+
+tune-fail2ban:
+	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \
+	  --inventory inventory/production_init.yml \
+	  --extra-vars "@server_init_vars.yml" \
+	  --tags "init-fail2ban"
+
+refresh-geo-block:
+	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \
+	  --inventory inventory/production_init.yml \
+	  --extra-vars "@server_init_vars.yml" \
+	  --tags "init-firewall"
+
+verify-certbot-renew:
+	@if [ -z "$$TARGET_HOST" ]; then \
+	  echo "❌ TARGET_HOST が未設定です。例: make verify-certbot-renew TARGET_HOST=YOUR_VPS_GLOBAL_IP"; \
+	  exit 1; \
+	fi
+	@if [ -z "$$TARGET_KEY" ]; then \
+	  echo "❌ TARGET_KEY が未設定です。例: make verify-certbot-renew TARGET_HOST=... TARGET_KEY=$$HOME/.ssh/sakura_init_key"; \
+	  exit 1; \
+	fi
+	@TARGET_USER_VAL=$${TARGET_USER:-ssh-admin}; \
+	  ssh -i "$$TARGET_KEY" "$$TARGET_USER_VAL@$$TARGET_HOST" "sudo certbot renew --dry-run"
