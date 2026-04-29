@@ -52,7 +52,7 @@
 
 - name: Check if SSL certificate already exists
   ansible.builtin.stat:
-    path: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
+    path: "/etc/letsencrypt/live/{{ domain_name | mandatory('domain_name must be set in server_init_vars.yml') }}/fullchain.pem"
   register: ssl_cert_stat
   tags:
     - init-ssl
@@ -63,14 +63,14 @@
     --non-interactive
     --agree-tos
     --email {{ certbot_email | mandatory('certbot_email must be set in server_init_vars.yml') }}
-    -d {{ domain_name }}
+    -d {{ domain_name | mandatory('domain_name must be set in server_init_vars.yml') }}
   when: not ssl_cert_stat.stat.exists
   tags:
     - init-ssl
 
 - name: Verify certificate was obtained
   ansible.builtin.stat:
-    path: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
+    path: "/etc/letsencrypt/live/{{ domain_name | mandatory('domain_name must be set in server_init_vars.yml') }}/fullchain.pem"
   register: ssl_cert_verify
   failed_when: not ssl_cert_verify.stat.exists
   changed_when: false

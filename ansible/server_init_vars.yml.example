@@ -35,6 +35,8 @@ deploy_ssh_public_key: "ssh-ed25519 AAAAC3Nza... your-deploy-key-public-part"
 # ============================================================
 # SSL 証明書 (Let's Encrypt)
 # ============================================================
+# 証明書発行対象ドメイン（example.com はサンプル。実運用ドメインに置き換える）
+domain_name: "example.com"
 certbot_email: "your-email@example.com"
 
 # ============================================================

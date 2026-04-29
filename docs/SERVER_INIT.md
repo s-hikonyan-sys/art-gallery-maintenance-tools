@@ -149,13 +149,14 @@ nano server_init_vars.yml   # 各項目を設定
 | `init_ssh_key` | AlmaLinux 初期ユーザー用 SSH 秘密鍵 | `~/.ssh/sakura_init_key` |
 | `admin_ssh_public_key` | `ssh-admin` に登録する公開鍵の1行（通常は `sakura_init_key.pub` と同じ） | `ssh-ed25519 AAAA...` |
 | `deploy_ssh_public_key` | デプロイ用公開鍵（`PROD_SSH_PRIVATE_KEY` 対応・`artgallery` ユーザー） | `ssh-ed25519 AAAA...` |
+| `domain_name` | SSL 証明書発行対象ドメイン（`init-ssl` で利用） | `example.com` |
 | `certbot_email` | Let's Encrypt 通知メール | `you@example.com` |
 | `ghcr_token` | GitHub PAT（`read:packages` スコープ） | `ghp_xxx...` |
 | `ghcr_username` | GitHub ユーザー名 | `s-hikonyan-sys` |
 
 **ローカル実行時の切り分け（重要）**
 
-- **実行前に手元で設定が必要**: `init_host`, `init_ssh_key`, `admin_ssh_public_key`, `deploy_ssh_public_key`, `certbot_email`, `ghcr_token`, `ghcr_username`
+- **実行前に手元で設定が必要**: `init_host`, `init_ssh_key`, `admin_ssh_public_key`, `deploy_ssh_public_key`, `domain_name`, `certbot_email`, `ghcr_token`, `ghcr_username`
 - **この時点では未作成でOK（Playbook がサーバー側に作る）**: `ssh-admin` ユーザー、`artgallery` ユーザー、各 `authorized_keys`、`AllowUsers ssh-admin`
 - **ローカル実行後に期待される状態**: `ssh-admin` で SSH 可能、`alma` は SSH 不可、`artgallery` はデプロイ専用（SSH 不可）
 
@@ -163,7 +164,9 @@ nano server_init_vars.yml   # 各項目を設定
 >
 > **`deploy_ssh_public_key` の確認方法**: `PROD_SSH_PRIVATE_KEY` に対応する公開鍵（`~/.ssh/xxx.pub` または `ssh-keygen -y -f ~/.ssh/xxx`）。GitHub Actions が `artgallery` に接続する鍵であり、管理用の `sakura_init_key` と別でもよい。
 
-> **GitHub Actions 実行時との違い**: `.github/workflows/server_init.yml` では `server_init_vars.yml` をワークフロー内で生成し、`init_host` などを Variables/Secrets から注入する。`admin_ssh_public_key` も `INIT_SSH_PRIVATE_KEY` から自動算出される。
+> **`domain_name` の設定**: `init-ssl` が `certbot certonly --standalone -d <domain>` を実行するときの対象ドメイン。`example.com` はサンプルなので、実行時は実運用ドメインに置き換える。
+
+> **GitHub Actions 実行時との違い**: `.github/workflows/server_init.yml` では `server_init_vars.yml` をワークフロー内で生成し、`init_host`・`domain_name` などを Variables/Secrets から注入する。`admin_ssh_public_key` も `INIT_SSH_PRIVATE_KEY` から自動算出される。
 
 #### `deploy_ssh_public_key` を管理鍵と分離する手順（推奨）
 
@@ -361,6 +364,7 @@ YOUR_VPS_GLOBAL_IP ecdsa-sha2-nistp256 AAAA...
 | 名前 | 種別 | 内容 |
 |:---|:---|:---|
 | `PROD_HOST` | Variable | VPS の IP（変わっていれば更新） |
+| `PROD_DOMAIN_NAME` | Variable | SSL 証明書発行対象ドメイン（例: `your-domain.com`） |
 | `PROD_SSH_USER` | Variable | **`ssh-admin`**（本プレイブック完了後の SSH ユーザー。未設定なら設定） |
 | `PROD_SSH_PRIVATE_KEY` | Secret | デプロイ用秘密鍵（変わらなければ不要） |
 

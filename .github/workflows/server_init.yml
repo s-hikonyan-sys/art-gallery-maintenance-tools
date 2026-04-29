@@ -66,6 +66,7 @@ jobs:
             echo "init_ssh_key: \"~/.ssh/init_key\""
             echo "deploy_ssh_public_key: \"${{ secrets.PROD_SSH_PUBLIC_KEY }}\""
             echo "admin_ssh_public_key: \"${ADMIN_PUB}\""
+            echo "domain_name: \"${{ vars.PROD_DOMAIN_NAME }}\""
             echo "certbot_email: \"${{ vars.CERTBOT_EMAIL }}\""
             echo "ghcr_token: \"${{ secrets.GH_TOKEN_FOR_GHCR }}\""
             echo "ghcr_username: \"${{ vars.GITHUB_OWNER }}\""

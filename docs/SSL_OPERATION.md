@@ -24,6 +24,7 @@ nslookup example.com
 
 - A レコードが対象 VPS のグローバル IPv4 を向いていること
 - 80/443 が通信可能であること
+- `server_init_vars.yml` の `domain_name` が実ドメインであること（`example.com` のまま実行しない）
 - `server_init_vars.yml` の `certbot_email` が設定済みであること
 
 ## 3. 実行後チェック（手動）

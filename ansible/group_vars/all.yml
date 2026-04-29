@@ -9,7 +9,6 @@ admin_user: "ssh-admin"
 app_name: "art-gallery"
 app_user: "artgallery"
 deployment_dir: "/opt/art-gallery"
-domain_name: "nara-sketch.com"
 
 # デプロイメントディレクトリ構成
 deployment_subdirs:
