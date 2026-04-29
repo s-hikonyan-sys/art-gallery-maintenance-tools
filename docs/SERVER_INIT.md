@@ -43,6 +43,8 @@ OS 再インストール後に本番サーバーを復旧する手順書。
 
 Ansible を実行する前に、ローカル（WSL2）で SSH 鍵を用意し、VPS に登録する必要がある。
 
+> 以降のコマンド例に出てくる `YOUR_VPS_GLOBAL_IP` は、対象 VPS のグローバル IPv4（さくらのVPS コントロールパネル「基本情報」に表示される値）に置き換えること。
+
 ### 0-1. ローカル WSL2 で SSH 鍵を作成（初回のみ）
 
 `alma` ユーザー接続用の鍵が**まだなければ**作成する。既存の鍵を使う場合はスキップ。
@@ -67,10 +69,10 @@ ls -la ~/.ssh/sakura_init_key*
 
 ```bash
 # OS インストール後は known_hosts に古いホスト鍵が残っている場合があるのでクリア
-ssh-keygen -R 219.94.248.165
+ssh-keygen -R YOUR_VPS_GLOBAL_IP
 
 # パスワードで接続テスト（インストール時に設定したパスワードを入力）
-ssh alma@219.94.248.165
+ssh alma@YOUR_VPS_GLOBAL_IP
 ```
 
 接続できたら `exit` で一度切断する。
@@ -83,10 +85,10 @@ ssh alma@219.94.248.165
 
 ```bash
 # 0-1 で作成した公開鍵を VPS に転送
-ssh-copy-id -i ~/.ssh/sakura_init_key.pub alma@219.94.248.165
+ssh-copy-id -i ~/.ssh/sakura_init_key.pub alma@YOUR_VPS_GLOBAL_IP
 
 # 登録確認: 公開鍵認証で接続できるか確認
-ssh -i ~/.ssh/sakura_init_key alma@219.94.248.165
+ssh -i ~/.ssh/sakura_init_key alma@YOUR_VPS_GLOBAL_IP
 ```
 
 > パスワードなしで接続できれば成功。以後の Ansible はこの鍵で接続する。
@@ -105,8 +107,8 @@ ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
 
 ```bash
 # ローカルで接続時に表示されるフィンガープリントと一致するか確認してから yes を入力
-ssh -i ~/.ssh/sakura_init_key alma@219.94.248.165
-# The authenticity of host '219.94.248.165' can't be established.
+ssh -i ~/.ssh/sakura_init_key alma@YOUR_VPS_GLOBAL_IP
+# The authenticity of host 'YOUR_VPS_GLOBAL_IP' can't be established.
 # ED25519 key fingerprint is SHA256:XXXXXXXXXX...
 # Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
 ```
@@ -129,7 +131,7 @@ nano server_init_vars.yml   # 各項目を設定
 
 | 変数 | 内容 | 例 |
 |:---|:---|:---|
-| `init_host` | VPS の IP アドレス | `219.94.248.165` |
+| `init_host` | VPS の IP アドレス | `YOUR_VPS_GLOBAL_IP` |
 | `init_ssh_key` | AlmaLinux 初期ユーザー用 SSH 秘密鍵 | `~/.ssh/id_ed25519` |
 | `deploy_ssh_public_key` | デプロイ用公開鍵（`PROD_SSH_PRIVATE_KEY` 対応） | `ssh-ed25519 AAAA...` |
 | `certbot_email` | Let's Encrypt 通知メール | `you@example.com` |
@@ -244,7 +246,7 @@ make update-known-hosts
 
 出力例:
 ```
-219.94.248.165 ecdsa-sha2-nistp256 AAAA...
+YOUR_VPS_GLOBAL_IP ecdsa-sha2-nistp256 AAAA...
 ```
 
 ### 2-2. GitHub Secrets / Variables を更新
@@ -295,9 +297,9 @@ systemctl status sshd
 
 ```bash
 # SSH 接続を手動テスト
-ssh -i ~/.ssh/id_ed25519 alma@219.94.248.165
+ssh -i ~/.ssh/id_ed25519 alma@YOUR_VPS_GLOBAL_IP
 # known_hosts をクリア（OS 再インストール後は必須）
-ssh-keygen -R 219.94.248.165
+ssh-keygen -R YOUR_VPS_GLOBAL_IP
 ```
 
 ### Docker インストールが失敗する
