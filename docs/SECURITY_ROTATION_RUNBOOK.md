@@ -69,6 +69,46 @@
 - ローカル運用: `ansible/server_init_vars.yml` の `ghcr_token` を更新。
 - GitHub Actions 運用: Repository `Settings` → `Secrets and variables` で該当 secret を更新。
 
+#### PAT 交換時に更新すべき GitHub Actions 設定（必須）
+
+`Settings` → `Secrets and variables` → `Actions` で、以下を更新する。
+
+**`art-gallery-maintenance-tools`**
+
+- `GH_TOKEN_FOR_GHCR`（`server_init.yml` で `ghcr_token` として注入）
+
+**`art-gallery-release-tools`**
+
+- `GH_TOKEN_FOR_ART_GALLERY_RELEASE_TOOLS`（manifest 更新 PR 作成用。`create-pull-request` で使用）
+- `GH_TOKEN_FOR_ART_GALLERY_BACKEND`（backend リポジトリ参照用）
+- `GH_TOKEN_FOR_ART_GALLERY_DATABASE`（database リポジトリ参照用）
+- `GH_TOKEN_FOR_ART_GALLERY_SECRETS`（secrets リポジトリ参照用）
+- `GH_TOKEN_FOR_ART_GALLERY_FRONTEND`（frontend リポジトリ参照用。`build_frontend.yml`）
+- `GH_TOKEN_FOR_ART_GALLERY_NGINX`（nginx リポジトリ参照用。`deploy_nginx.yml`）
+
+#### Secret 対応表（secret名 / 対象repo / 用途 / 必要権限）
+
+| Secret 名 | 主対象リポジトリ | 主な用途 | 最低限必要な権限（fine-grained） |
+|:---|:---|:---|:---|
+| `GH_TOKEN_FOR_GHCR` | `art-gallery-maintenance-tools`（+ GHCR） | `server_init.yml` で `ghcr_token` 注入 | `Packages: Read and write`（GHCR 用） |
+| `GH_TOKEN_FOR_ART_GALLERY_RELEASE_TOOLS` | `art-gallery-release-tools` | build/register/deploy で manifest 更新 PR 作成 | `Contents: Read and write`, `Pull requests: Read and write` |
+| `GH_TOKEN_FOR_ART_GALLERY_BACKEND` | `art-gallery-backend` | `build_backend.yml` / `deploy_backend.yml` で `git ls-remote`・取得 | `Contents: Read-only`（書き込みしない運用時） |
+| `GH_TOKEN_FOR_ART_GALLERY_DATABASE` | `art-gallery-database` | `build_database.yml` / `deploy_database.yml` で参照 | `Contents: Read-only` |
+| `GH_TOKEN_FOR_ART_GALLERY_SECRETS` | `art-gallery-secrets` | `build_secrets.yml` / `deploy_secrets.yml` で参照 | `Contents: Read-only` |
+| `GH_TOKEN_FOR_ART_GALLERY_FRONTEND` | `art-gallery-frontend` | `build_frontend.yml` で参照 | `Contents: Read-only` |
+| `GH_TOKEN_FOR_ART_GALLERY_NGINX` | `art-gallery-nginx` | `deploy_nginx.yml` で参照 | `Contents: Read-only` |
+
+補足:
+
+- 上記は「GitHub リポジトリ参照用トークン」。GHCR 操作権限（`Packages:*`）とは分けて管理する。
+- `release-tools` 自体の manifest PR 作成失敗（`could not read Username ...`）は、`GH_TOKEN_FOR_ART_GALLERY_RELEASE_TOOLS` の失効/権限不足が典型原因。
+
+#### 権限の注意（fine-grained）
+
+- `GH_TOKEN_FOR_ART_GALLERY_RELEASE_TOOLS` は少なくとも `art-gallery-release-tools` に対して `Contents: Read and write` と `Pull requests: Read and write` が必要。
+- 各サービス用トークン（backend/database/secrets/frontend/nginx）は、対象リポジトリへの参照に必要な権限を付与する。
+- GHCR push/pull を行うトークンは `Packages: Read and write` を付与する。
+
 ### 1-3. サーバーへ反映
 
 ```bash
