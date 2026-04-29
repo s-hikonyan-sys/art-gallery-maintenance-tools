@@ -169,6 +169,7 @@ nano server_init_vars.yml   # 各項目を設定
 | `init_host` | VPS の IP アドレス | `YOUR_VPS_GLOBAL_IP` |
 | `init_ssh_key` | AlmaLinux 初期ユーザー用 SSH 秘密鍵 | `~/.ssh/sakura_init_key` |
 | `admin_ssh_public_key` | `ssh-admin` に登録する公開鍵の1行（通常は `sakura_init_key.pub` と同じ） | `ssh-ed25519 AAAA...` |
+| `initial_release_version` | `/opt/art-gallery/current_versions.yml` の初期値に使うバージョン（GHCR 既存タグ） | `1.0.0` |
 | `domain_name` | SSL 証明書発行対象ドメイン（`init-ssl` で利用） | `example.com` |
 | `certbot_email` | Let's Encrypt 通知メール | `you@example.com` |
 | `ghcr_token` | GitHub PAT（本運用は push + pull 前提） | `ghp_xxx...` |
@@ -176,7 +177,7 @@ nano server_init_vars.yml   # 各項目を設定
 
 **ローカル実行時の切り分け（重要）**
 
-- **実行前に手元で設定が必要**: `init_host`, `init_ssh_key`, `admin_ssh_public_key`, `domain_name`, `certbot_email`, `ghcr_token`, `ghcr_username`
+- **実行前に手元で設定が必要**: `init_host`, `init_ssh_key`, `admin_ssh_public_key`, `initial_release_version`, `domain_name`, `certbot_email`, `ghcr_token`, `ghcr_username`
 - **この時点では未作成でOK（Playbook がサーバー側に作る）**: `ssh-admin` ユーザー、`artgallery` ユーザー、各 `authorized_keys`、`AllowUsers ssh-admin`
 - **ローカル実行後に期待される状態**: `ssh-admin` で SSH 可能、`alma` は SSH 不可、`artgallery` はデプロイ専用（SSH 不可）
 
@@ -289,10 +290,12 @@ Playbook が完了すると以下が設定されます:
 - [x] `artgallery` ユーザー作成（sudo 権限・デプロイ用 SSH 公開鍵登録済み。**AllowUsers により SSH ログインは不可**）
 - [x] **SSH 強制**（`PermitRootLogin no`・パスワード認証無効・**`AllowUsers ssh-admin` のみ** → `alma` は SSH 不可）
 - [x] Docker CE + Docker Compose プラグインのインストール
+- [x] `acl` パッケージの導入（`setfacl`。Ansible の `become_user` 実行に必要）
 - [x] firewalld の有効化（SSH / HTTP / HTTPS のみ許可）
 - [x] **高リスク国ジオブロック**（[ipdeny.com](https://www.ipdeny.com/ipblocks/) の国別 IPv4 帯域を firewalld ipset に取り込み、**TCP 80 / 443 宛てのみ DROP**。SSH は対象外 → GitHub Actions からの SSH は阻害しない）
 - [x] **Fail2ban**（`sshd` ジェイル有効。ブルートフォース試行を自動 BAN）
 - [x] デプロイメントディレクトリ `/opt/art-gallery/` の作成
+- [x] `current_versions.yml` の初期化（`initial_release_version` を secrets/postgres/backend/nginx の初期値として設定）
 - [x] Let's Encrypt SSL 証明書の取得（`--skip-tags init-ssl` でスキップ可）
 - [x] GHCR Docker 認証設定（`artgallery` ユーザー）
 
@@ -399,6 +402,8 @@ YOUR_VPS_GLOBAL_IP ecdsa-sha2-nistp256 AAAA...
 ---
 
 ## Phase 3: アプリデプロイ
+
+`server-init` で `/opt/art-gallery/current_versions.yml` は初期化されるが、指定した `initial_release_version` は **GHCR に実在するタグ**である必要がある。存在しないタグを設定した場合、初回デプロイで image pull に失敗する。
 
 `art-gallery-release-tools` の GitHub Actions を以下の順番で実行:
 

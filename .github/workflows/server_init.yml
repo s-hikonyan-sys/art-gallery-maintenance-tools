@@ -60,11 +60,17 @@ jobs:
       - name: Write server init vars file
         run: |
           ADMIN_PUB=$(ssh-keygen -y -f ~/.ssh/init_key)
+          INITIAL_RELEASE_VERSION="${{ vars.RELEASE_VERSION }}"
+          if [ -z "${INITIAL_RELEASE_VERSION}" ]; then
+            echo "::error::vars.RELEASE_VERSION が未設定です。server-init で current_versions.yml 初期化に必要です。"
+            exit 1
+          fi
           {
             echo "---"
             echo "init_host: \"${{ vars.PROD_HOST }}\""
             echo "init_ssh_key: \"~/.ssh/init_key\""
             echo "admin_ssh_public_key: \"${ADMIN_PUB}\""
+            echo "initial_release_version: \"${INITIAL_RELEASE_VERSION}\""
             echo "domain_name: \"${{ vars.PROD_DOMAIN_NAME }}\""
             echo "certbot_email: \"${{ vars.CERTBOT_EMAIL }}\""
             echo "ghcr_token: \"${{ secrets.GH_TOKEN_FOR_GHCR }}\""

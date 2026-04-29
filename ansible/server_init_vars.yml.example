@@ -24,6 +24,9 @@ init_ssh_key: "~/.ssh/sakura_init_key"
 
 admin_ssh_public_key: "ssh-ed25519 AAAAC3Nza... from-sakura_init_key.pub"
 
+# current_versions.yml の初期値として使うリリースバージョン（GHCR に存在するタグ）
+initial_release_version: "1.0.0"
+
 # ============================================================
 # SSL 証明書 (Let's Encrypt)
 # ============================================================

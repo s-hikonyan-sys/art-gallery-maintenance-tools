@@ -24,6 +24,28 @@
   tags:
     - init-directories
 
+- name: Check current_versions.yml exists
+  ansible.builtin.stat:
+    path: "{{ deployment_dir }}/current_versions.yml"
+  register: current_versions_stat
+  tags:
+    - init-directories
+
+- name: Initialize current_versions.yml for release-tools deploy bootstrap
+  ansible.builtin.copy:
+    content: |
+      secrets_version: "{{ initial_release_version | mandatory('initial_release_version must be set in server_init_vars.yml (existing GHCR tag)') }}"
+      postgres_version: "{{ initial_release_version | mandatory('initial_release_version must be set in server_init_vars.yml (existing GHCR tag)') }}"
+      backend_version: "{{ initial_release_version | mandatory('initial_release_version must be set in server_init_vars.yml (existing GHCR tag)') }}"
+      nginx_version: "{{ initial_release_version | mandatory('initial_release_version must be set in server_init_vars.yml (existing GHCR tag)') }}"
+    dest: "{{ deployment_dir }}/current_versions.yml"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0644"
+  when: not current_versions_stat.stat.exists
+  tags:
+    - init-directories
+
 - name: Verify directory structure
   ansible.builtin.find:
     paths: "{{ deployment_dir }}"
