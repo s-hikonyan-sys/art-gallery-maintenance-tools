@@ -69,7 +69,7 @@ jobs:
             echo "domain_name: \"${{ vars.PROD_DOMAIN_NAME }}\""
             echo "certbot_email: \"${{ vars.CERTBOT_EMAIL }}\""
             echo "ghcr_token: \"${{ secrets.GH_TOKEN_FOR_GHCR }}\""
-            echo "ghcr_username: \"${{ vars.GITHUB_OWNER }}\""
+            echo "ghcr_username: \"${{ vars.GH_OWNER }}\""
           } > ansible/server_init_vars.yml
           chmod 600 ansible/server_init_vars.yml
 

@@ -386,7 +386,7 @@ YOUR_VPS_GLOBAL_IP ecdsa-sha2-nistp256 AAAA...
 | `PROD_HOST` | Variable | 初期化対象 VPS の IP（`server_init` の接続先） |
 | `PROD_DOMAIN_NAME` | Variable | SSL 証明書発行対象ドメイン |
 | `CERTBOT_EMAIL` | Variable | Let's Encrypt 通知メールアドレス |
-| `GITHUB_OWNER` | Variable | GHCR オーナー名（例: `s-hikonyan-sys`） |
+| `GH_OWNER` | Variable | GHCR オーナー名（例: `s-hikonyan-sys`） |
 | `INIT_SSH_PRIVATE_KEY` | Secret | 初回接続用秘密鍵（`alma` 接続で使用） |
 | `PROD_SSH_PUBLIC_KEY` | Secret | デプロイ用公開鍵（`artgallery` の `authorized_keys` に登録） |
 | `GH_TOKEN_FOR_GHCR` | Secret | GHCR 認証用トークン（`ghcr_token` として注入） |
