@@ -48,9 +48,6 @@
     - firewall_blocked_country_codes | length > 0
   tags:
     - init-firewall
-  apply:
-    tags:
-      - init-firewall
 
 - name: Reload firewalld to apply changes
   ansible.builtin.command: firewall-cmd --reload
