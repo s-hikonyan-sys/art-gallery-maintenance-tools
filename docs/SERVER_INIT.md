@@ -422,7 +422,7 @@ make server-verify
 引数で直接指定する場合:
 
 ```bash
-cd /home/homepage/project/my_homepage/replace_work/art-gallery-maintenance-tools
+cd art-gallery-maintenance-tools
 pytest -q tests/testinfra \
   --target-host "YOUR_VPS_GLOBAL_IP" \
   --target-user "ssh-admin" \

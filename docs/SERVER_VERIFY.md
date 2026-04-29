@@ -34,14 +34,14 @@ export TARGET_KEY="$HOME/.ssh/sakura_init_key"
 export TARGET_DOMAIN="your-domain.com"   # 任意（未設定でも可）
 export TARGET_SSH_PORT="22"               # 任意
 
-cd /home/homepage/project/my_homepage/replace_work/art-gallery-maintenance-tools
+cd art-gallery-maintenance-tools
 pytest -q tests/testinfra
 ```
 
 ### 方法B: CLI 引数で指定
 
 ```bash
-cd /home/homepage/project/my_homepage/replace_work/art-gallery-maintenance-tools
+cd art-gallery-maintenance-tools
 pytest -q tests/testinfra \
   --target-host "YOUR_VPS_GLOBAL_IP" \
   --target-user "ssh-admin" \
