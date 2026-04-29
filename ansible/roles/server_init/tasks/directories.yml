@@ -1,0 +1,40 @@
+---
+# デプロイメントディレクトリの作成
+# art-gallery-release-tools の Ansible が期待するディレクトリ構成を作成する
+# deployment_dir: /opt/art-gallery
+
+- name: Create deployment root directory
+  ansible.builtin.file:
+    path: "{{ deployment_dir }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+  tags:
+    - init-directories
+
+- name: Create deployment subdirectories
+  ansible.builtin.file:
+    path: "{{ deployment_dir }}/{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+  loop: "{{ deployment_subdirs }}"
+  tags:
+    - init-directories
+
+- name: Verify directory structure
+  ansible.builtin.find:
+    paths: "{{ deployment_dir }}"
+    file_type: directory
+    recurse: no
+  register: created_dirs
+  tags:
+    - init-directories
+
+- name: Show created directories
+  ansible.builtin.debug:
+    msg: "Created: {{ created_dirs.files | map(attribute='path') | list | sort }}"
+  tags:
+    - init-directories

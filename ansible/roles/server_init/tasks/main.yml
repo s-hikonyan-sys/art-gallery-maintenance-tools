@@ -1,0 +1,37 @@
+---
+# server_init ロール エントリポイント
+# 各タスクはタグで個別実行できる
+
+- name: Apply security updates
+  ansible.builtin.include_tasks: security_updates.yml
+  tags: always
+
+- name: Setup app user
+  ansible.builtin.include_tasks: users.yml
+  tags:
+    - init-users
+
+- name: Install and configure Docker
+  ansible.builtin.include_tasks: docker.yml
+  tags:
+    - init-docker
+
+- name: Configure firewall
+  ansible.builtin.include_tasks: firewall.yml
+  tags:
+    - init-firewall
+
+- name: Create deployment directories
+  ansible.builtin.include_tasks: directories.yml
+  tags:
+    - init-directories
+
+- name: Setup SSL certificate (Let's Encrypt)
+  ansible.builtin.include_tasks: ssl.yml
+  tags:
+    - init-ssl
+
+- name: Configure GHCR authentication
+  ansible.builtin.include_tasks: ghcr.yml
+  tags:
+    - init-ghcr

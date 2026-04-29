@@ -1,0 +1,34 @@
+---
+# server_init_vars.yml のサンプルファイル
+# このファイルをコピーして server_init_vars.yml を作成し、値を設定してください。
+#
+# cp server_init_vars.yml.example server_init_vars.yml
+# (server_init_vars.yml は .gitignore 対象)
+
+# ============================================================
+# VPS 接続情報
+# ============================================================
+
+# VPS の IP アドレスまたは FQDN (さくらのVPS コントロールパネルで確認)
+init_host: "219.94.248.165"
+
+# 初回接続に使うローカルの SSH 秘密鍵パス (AlmaLinux 標準ユーザー alma 用)
+init_ssh_key: "~/.ssh/id_ed25519"
+
+# ============================================================
+# デプロイ SSH 鍵 (GitHub Actions が接続する artgallery ユーザー用)
+# PROD_SSH_PRIVATE_KEY に対応する公開鍵の中身を貼り付け
+# ============================================================
+deploy_ssh_public_key: "ssh-ed25519 AAAAC3Nza... your-deploy-key-public-part"
+
+# ============================================================
+# SSL 証明書 (Let's Encrypt)
+# ============================================================
+certbot_email: "your-email@example.com"
+
+# ============================================================
+# GHCR 認証 (Docker イメージ pull 用)
+# GitHub の Personal Access Token (read:packages スコープ)
+# ============================================================
+ghcr_token: "ghp_xxxxxxxxxxxxxxxxxxxx"
+ghcr_username: "s-hikonyan-sys"

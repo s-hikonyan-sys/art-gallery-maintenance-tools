@@ -1,0 +1,72 @@
+---
+# サーバー初期構築プレイブック
+#
+# 実行前提:
+#   1. さくらのVPSで AlmaLinux 10 を OS 再インストール済みであること
+#   2. ansible/server_init_vars.yml に接続情報・機密値を設定済みであること
+#      （server_init_vars.yml.example を参照）
+#   3. Ansible の collections がインストール済みであること
+#      ansible-galaxy collection install -r requirements.yml
+#
+# 実行方法（Makefile 経由を推奨）:
+#   make server-init
+#
+# または直接実行:
+#   cd ansible && ansible-playbook playbook_server_init.yml \
+#     --inventory inventory/production_init.yml \
+#     --extra-vars "@server_init_vars.yml"
+#
+# タグ一覧（個別実行可能）:
+#   init-security    : セキュリティアップデート + ベースパッケージ
+#   init-users       : app ユーザー作成・SSH 設定
+#   init-docker      : Docker CE インストール
+#   init-firewall    : firewalld 設定
+#   init-directories : デプロイメントディレクトリ作成
+#   init-ssl         : Let's Encrypt 証明書取得
+#   init-ghcr        : GHCR 認証設定
+
+- name: Initialize art-gallery production server
+  hosts: production-init
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Confirm server init will be executed
+      ansible.builtin.debug:
+        msg: >-
+          サーバー初期構築を開始します。
+          対象ホスト: {{ ansible_host }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          実行ユーザー: {{ ansible_user }}
+
+    - name: Verify we are running on AlmaLinux
+      ansible.builtin.fail:
+        msg: >-
+          このプレイブックは AlmaLinux 専用です。
+          現在の OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+      when: ansible_distribution != "AlmaLinux"
+
+  roles:
+    - role: server_init
+
+  post_tasks:
+    - name: Print next steps
+      ansible.builtin.debug:
+        msg:
+          - "==============================="
+          - "サーバー初期構築が完了しました！"
+          - "==============================="
+          - ""
+          - "次のステップ:"
+          - "1. GitHub Secrets の PROD_SSH_KNOWN_HOSTS を更新する"
+          - "   実行: make update-known-hosts"
+          - ""
+          - "2. art-gallery-release-tools の GitHub Actions を順番に実行する"
+          - "   a) setup_startup_service.yml"
+          - "   b) deploy_secrets.yml"
+          - "   c) deploy_database.yml"
+          - "   d) deploy_backend.yml"
+          - "   e) deploy_frontend.yml"
+          - "   f) deploy_nginx.yml"
+          - ""
+          - "接続確認コマンド ({{ app_user }} ユーザーで):"
+          - "  ssh {{ app_user }}@{{ ansible_host }}"

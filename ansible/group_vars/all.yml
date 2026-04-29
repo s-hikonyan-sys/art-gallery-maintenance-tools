@@ -1,0 +1,35 @@
+---
+# サーバー初期構築共通変数
+# 機密値・環境固有値は server_init_vars.yml（.gitignore 対象）に記載する
+
+# アプリケーション設定
+app_name: "art-gallery"
+app_user: "artgallery"
+deployment_dir: "/opt/art-gallery"
+domain_name: "nara-sketch.com"
+
+# デプロイメントディレクトリ構成
+deployment_subdirs:
+  - "src"
+  - "dist"
+  - "conf/nginx"
+  - "conf/backend"
+  - "conf/database"
+  - "conf/secrets/config"
+  - "conf/secrets/tokens"
+  - "logs/nginx"
+  - "logs/backend"
+  - "scripts"
+  - "tmp"
+
+# firewalld 許可サービス
+firewall_services:
+  - ssh
+  - http
+  - https
+
+# Docker インストール設定（AlmaLinux 10）
+docker_repo_url: "https://download.docker.com/linux/rhel"
+
+# GHCR 設定
+ghcr_registry: "ghcr.io"

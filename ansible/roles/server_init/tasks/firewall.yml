@@ -1,0 +1,61 @@
+---
+# firewalld の設定（AlmaLinux 標準 OS では無効のため有効化）
+
+- name: Install firewalld
+  ansible.builtin.dnf:
+    name: firewalld
+    state: present
+  tags:
+    - init-firewall
+
+- name: Enable and start firewalld
+  ansible.builtin.systemd:
+    name: firewalld
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  tags:
+    - init-firewall
+
+- name: Allow required services in public zone
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    zone: public
+    permanent: yes
+    state: enabled
+  loop: "{{ firewall_services }}"
+  notify: Reload firewalld
+  tags:
+    - init-firewall
+
+- name: Remove unnecessary default services from public zone
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    zone: public
+    permanent: yes
+    state: disabled
+  loop:
+    - cockpit
+    - dhcpv6-client
+  notify: Reload firewalld
+  tags:
+    - init-firewall
+
+- name: Reload firewalld to apply changes
+  ansible.builtin.command: firewall-cmd --reload
+  changed_when: true
+  tags:
+    - init-firewall
+
+- name: Show active firewall rules
+  ansible.builtin.command: firewall-cmd --list-all --zone=public
+  register: firewall_rules
+  changed_when: false
+  tags:
+    - init-firewall
+
+- name: Print firewall rules
+  ansible.builtin.debug:
+    msg: "{{ firewall_rules.stdout_lines }}"
+  tags:
+    - init-firewall

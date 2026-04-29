@@ -1,0 +1,72 @@
+---
+# アプリケーション実行ユーザーの作成
+# Ansible / GitHub Actions がデプロイ時に接続するユーザー: {{ app_user }}
+
+- name: Create app user group
+  ansible.builtin.group:
+    name: "{{ app_user }}"
+    state: present
+  tags:
+    - init-users
+
+- name: Create app user
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    group: "{{ app_user }}"
+    groups: wheel
+    append: yes
+    shell: /bin/bash
+    create_home: yes
+    state: present
+    comment: "art-gallery deployment user"
+  tags:
+    - init-users
+
+- name: Create .ssh directory for app user
+  ansible.builtin.file:
+    path: "/home/{{ app_user }}/.ssh"
+    state: directory
+    mode: '0700'
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+  tags:
+    - init-users
+
+- name: Register deployment SSH public key for app user
+  ansible.builtin.authorized_key:
+    user: "{{ app_user }}"
+    key: "{{ deploy_ssh_public_key | mandatory('deploy_ssh_public_key must be set in server_init_vars.yml') }}"
+    state: present
+  tags:
+    - init-users
+
+- name: Allow app user to sudo without password (required for Ansible become)
+  ansible.builtin.copy:
+    content: "{{ app_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    dest: "/etc/sudoers.d/{{ app_user }}"
+    mode: '0440'
+    validate: 'visudo -cf %s'
+  tags:
+    - init-users
+
+- name: Disable password authentication for root SSH
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: 'PermitRootLogin prohibit-password'
+    state: present
+    backup: yes
+  notify: Restart sshd
+  tags:
+    - init-users
+
+- name: Disable password authentication globally
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: 'PasswordAuthentication no'
+    state: present
+    backup: yes
+  notify: Restart sshd
+  tags:
+    - init-users

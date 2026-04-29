@@ -1,0 +1,16 @@
+# ローカル開発環境
+local/.env
+local/conf/
+
+# サーバー初期構築用変数ファイル（機密情報を含む）
+ansible/server_init_vars.yml
+
+# Ansible キャッシュ
+ansible/.ansible_cache/
+ansible/retry_files/
+*.retry
+
+# エディタ
+.vscode/
+*.swp
+*.swo

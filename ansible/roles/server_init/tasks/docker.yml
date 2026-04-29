@@ -1,0 +1,80 @@
+---
+# Docker CE と Docker Compose プラグインのインストール（AlmaLinux 10）
+
+- name: Remove old Docker packages if present
+  ansible.builtin.dnf:
+    name:
+      - docker
+      - docker-client
+      - docker-client-latest
+      - docker-common
+      - docker-latest
+      - docker-latest-logrotate
+      - docker-logrotate
+      - docker-engine
+      - podman
+      - runc
+    state: absent
+  tags:
+    - init-docker
+
+- name: Add Docker CE repository
+  ansible.builtin.yum_repository:
+    name: docker-ce-stable
+    description: Docker CE Stable - $basearch
+    baseurl: "{{ docker_repo_url }}/$releasever/$basearch/stable"
+    gpgcheck: yes
+    gpgkey: "{{ docker_repo_url }}/gpg"
+    enabled: yes
+  tags:
+    - init-docker
+
+- name: Install Docker CE and Compose plugin
+  ansible.builtin.dnf:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+  tags:
+    - init-docker
+
+- name: Enable and start Docker service
+  ansible.builtin.systemd:
+    name: docker
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  tags:
+    - init-docker
+
+- name: Add app user to docker group
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    groups: docker
+    append: yes
+  tags:
+    - init-docker
+
+- name: Add alma user to docker group
+  ansible.builtin.user:
+    name: alma
+    groups: docker
+    append: yes
+  tags:
+    - init-docker
+
+- name: Verify Docker is running
+  ansible.builtin.command: docker info
+  register: docker_info_result
+  changed_when: false
+  tags:
+    - init-docker
+
+- name: Show Docker version
+  ansible.builtin.debug:
+    msg: "Docker installed successfully. Run 'docker info' for details."
+  tags:
+    - init-docker

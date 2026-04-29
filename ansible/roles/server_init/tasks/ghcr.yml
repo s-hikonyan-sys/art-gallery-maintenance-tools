@@ -1,0 +1,39 @@
+---
+# GHCR (GitHub Container Registry) の認証設定
+# Docker pull 時に認証が必要なため、app_user の docker login 設定を行う
+
+- name: Create Docker config directory for app user
+  ansible.builtin.file:
+    path: "/home/{{ app_user }}/.docker"
+    state: directory
+    mode: '0700'
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+  tags:
+    - init-ghcr
+
+- name: Login to GHCR as app user
+  ansible.builtin.shell: |
+    echo "{{ ghcr_token | mandatory('ghcr_token must be set in server_init_vars.yml') }}" | \
+    docker login {{ ghcr_registry }} \
+      --username "{{ ghcr_username | mandatory('ghcr_username must be set in server_init_vars.yml') }}" \
+      --password-stdin
+  become: yes
+  become_user: "{{ app_user }}"
+  no_log: true
+  register: ghcr_login_result
+  tags:
+    - init-ghcr
+
+- name: Verify GHCR login succeeded
+  ansible.builtin.fail:
+    msg: "GHCR ログインに失敗しました。ghcr_token と ghcr_username を確認してください。"
+  when: ghcr_login_result.rc != 0
+  tags:
+    - init-ghcr
+
+- name: GHCR login success
+  ansible.builtin.debug:
+    msg: "GHCR 認証完了: {{ ghcr_registry }}"
+  tags:
+    - init-ghcr

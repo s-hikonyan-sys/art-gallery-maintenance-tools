@@ -1,0 +1,19 @@
+---
+# サーバー初期構築用インベントリ
+# 接続ユーザーは AlmaLinux 標準の初期ユーザー "alma"
+#
+# 接続情報は --extra-vars または server_init_vars.yml で上書きする:
+#   init_host: <VPS の IP または FQDN>
+#   init_ssh_key: <ローカルの秘密鍵パス>
+
+all:
+  children:
+    production-init:
+      hosts:
+        vps:
+          ansible_host: "{{ init_host | mandatory('init_host must be set in server_init_vars.yml') }}"
+          ansible_user: "alma"
+          ansible_ssh_private_key_file: "{{ init_ssh_key | mandatory('init_ssh_key must be set in server_init_vars.yml') }}"
+          ansible_python_interpreter: /usr/bin/python3
+          ansible_become: yes
+          ansible_become_method: sudo

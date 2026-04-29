@@ -1,0 +1,107 @@
+name: Server Initial Setup
+
+# さくらのVPS OS 再インストール後の初期構築ワークフロー。
+#
+# 実行タイミング:
+#   - OS 再インストール直後（手動実行）
+#   - 原則として二度とは実行しないが、サーバー移行・障害復旧時に使用する
+#
+# このワークフローは初回接続ユーザー "alma" を使用する。
+# セットアップ完了後は artgallery ユーザーで接続するため、
+# art-gallery-release-tools のワークフローを順番に実行すること。
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: |
+          ⚠️ このワークフローはサーバーの初期設定を変更します。
+          OS 再インストール直後のみ実行してください。
+          確認するために "init" と入力してください。
+        required: true
+        type: string
+      skip_ssl:
+        description: 'SSL 証明書取得をスキップする（DNS 未設定時など）'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  server-init:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Validate confirmation input
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "init" ]; then
+            echo "::error::確認入力が 'init' ではありません。実行を中止します。"
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Ansible and collections
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+          ansible-galaxy collection install -r ansible/requirements.yml
+
+      - name: Setup SSH (alma user for initial connection)
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.INIT_SSH_PRIVATE_KEY }}" > ~/.ssh/init_key
+          chmod 600 ~/.ssh/init_key
+          ssh-keyscan -t ecdsa "${{ vars.PROD_HOST }}" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Write server init vars file
+        run: |
+          cat > ansible/server_init_vars.yml << 'VARS_EOF'
+          ---
+          init_host: "${{ vars.PROD_HOST }}"
+          init_ssh_key: "~/.ssh/init_key"
+          deploy_ssh_public_key: "${{ secrets.PROD_SSH_PUBLIC_KEY }}"
+          certbot_email: "${{ vars.CERTBOT_EMAIL }}"
+          ghcr_token: "${{ secrets.GH_TOKEN_FOR_GHCR }}"
+          ghcr_username: "${{ vars.GITHUB_OWNER }}"
+          VARS_EOF
+          chmod 600 ansible/server_init_vars.yml
+
+      - name: Run server init playbook (skip SSL)
+        if: ${{ github.event.inputs.skip_ssl == 'true' }}
+        run: |
+          cd ansible
+          ansible-playbook playbook_server_init.yml \
+            --inventory inventory/production_init.yml \
+            --extra-vars "@server_init_vars.yml" \
+            --skip-tags "init-ssl"
+
+      - name: Run server init playbook (full)
+        if: ${{ github.event.inputs.skip_ssl == 'false' }}
+        run: |
+          cd ansible
+          ansible-playbook playbook_server_init.yml \
+            --inventory inventory/production_init.yml \
+            --extra-vars "@server_init_vars.yml"
+
+      - name: Remove sensitive files
+        if: always()
+        run: rm -f ~/.ssh/init_key ansible/server_init_vars.yml
+
+      - name: Print next steps
+        run: |
+          echo "==============================="
+          echo "サーバー初期構築が完了しました！"
+          echo "==============================="
+          echo ""
+          echo "次のステップ:"
+          echo "1. art-gallery-release-tools で以下を順番に実行:"
+          echo "   a) setup_startup_service.yml"
+          echo "   b) deploy_secrets.yml"
+          echo "   c) deploy_database.yml"
+          echo "   d) deploy_backend.yml"
+          echo "   e) deploy_frontend.yml"
+          echo "   f) deploy_nginx.yml"
