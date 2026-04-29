@@ -153,9 +153,44 @@ nano server_init_vars.yml   # 各項目を設定
 | `ghcr_token` | GitHub PAT（`read:packages` スコープ） | `ghp_xxx...` |
 | `ghcr_username` | GitHub ユーザー名 | `s-hikonyan-sys` |
 
+**ローカル実行時の切り分け（重要）**
+
+- **実行前に手元で設定が必要**: `init_host`, `init_ssh_key`, `admin_ssh_public_key`, `deploy_ssh_public_key`, `certbot_email`, `ghcr_token`, `ghcr_username`
+- **この時点では未作成でOK（Playbook がサーバー側に作る）**: `ssh-admin` ユーザー、`artgallery` ユーザー、各 `authorized_keys`、`AllowUsers ssh-admin`
+- **ローカル実行後に期待される状態**: `ssh-admin` で SSH 可能、`alma` は SSH 不可、`artgallery` はデプロイ専用（SSH 不可）
+
 > **`admin_ssh_public_key` の確認方法**: 0-1〜0-3 で使った公開鍵ファイルの内容をそのまま貼る（例: `cat ~/.ssh/sakura_init_key.pub`）。**`init_ssh_key` に対応する公開鍵と一致**させないと、Playbook 完了後に `ssh-admin` でログインできず詰む。
 >
 > **`deploy_ssh_public_key` の確認方法**: `PROD_SSH_PRIVATE_KEY` に対応する公開鍵（`~/.ssh/xxx.pub` または `ssh-keygen -y -f ~/.ssh/xxx`）。GitHub Actions が `artgallery` に接続する鍵であり、管理用の `sakura_init_key` と別でもよい。
+
+> **GitHub Actions 実行時との違い**: `.github/workflows/server_init.yml` では `server_init_vars.yml` をワークフロー内で生成し、`init_host` などを Variables/Secrets から注入する。`admin_ssh_public_key` も `INIT_SSH_PRIVATE_KEY` から自動算出される。
+
+#### `deploy_ssh_public_key` を管理鍵と分離する手順（推奨）
+
+`sakura_init_key`（管理用）とは別に、`artgallery` デプロイ専用鍵を作って運用できる。
+
+```bash
+# 1) デプロイ専用鍵を新規作成（既存の管理鍵とは別ファイル）
+ssh-keygen -t ed25519 -C "artgallery-deploy-key" -f ~/.ssh/artgallery_deploy_key
+
+# 2) 公開鍵を server_init_vars.yml に設定するため内容を取得
+cat ~/.ssh/artgallery_deploy_key.pub
+```
+
+`server_init_vars.yml` には以下のように設定する:
+
+```yaml
+deploy_ssh_public_key: "ssh-ed25519 AAAA... artgallery-deploy-key"
+```
+
+Playbook 実行後、GitHub Actions でデプロイするには `art-gallery-release-tools` 側の `PROD_SSH_PRIVATE_KEY` を **同じ鍵ペアの秘密鍵**（`~/.ssh/artgallery_deploy_key` の内容）に更新する。
+
+```bash
+# 秘密鍵の内容をコピーして GitHub Secret に登録
+cat ~/.ssh/artgallery_deploy_key
+```
+
+> 注意: `deploy_ssh_public_key` と `PROD_SSH_PRIVATE_KEY` は必ず同一鍵ペアで揃えること。ずれるとデプロイ時に SSH 認証で失敗する。
 
 ### 1-2. Ansible collections をインストール
 
@@ -182,6 +217,24 @@ cd ansible && ansible-playbook playbook_server_init.yml \
   --tags "init-ssl"
 ```
 
+### 1-3b. SSL（`init-ssl`）の前提チェック
+
+`init-ssl` は `certbot certonly --standalone` で証明書を取得するため、実行前に以下を満たしている必要がある。
+
+- ドメインの A レコードが `YOUR_VPS_GLOBAL_IP` を向いている
+- 80/443 が firewalld で許可されている（本 Playbook デフォルトは許可）
+- `certbot_email` が `server_init_vars.yml` に設定済み
+
+確認例:
+
+```bash
+# ローカルで DNS を確認
+dig +short example.com
+nslookup example.com
+```
+
+> 注: `example.com` はサンプル。実行時はあなたの実ドメイン（例: `your-domain.example`）に置き換えること。
+
 ### 1-3a. 完了後の SSH 確認（推奨）
 
 Playbook が成功したら、**別のターミナル**で `ssh-admin` 接続を試す（既存の `alma` セッションは維持されることが多いが、設定誤りのときの保険になる）。
@@ -191,6 +244,22 @@ ssh -i ~/.ssh/sakura_init_key ssh-admin@YOUR_VPS_GLOBAL_IP
 ```
 
 問題なければ `alma` への SSH は拒否される（`Permission denied`）ことを確認してよい。
+
+### 1-3c. SSL 適用後の確認（推奨）
+
+```bash
+# ローカルで HTTPS 応答確認
+curl -I https://example.com
+
+# サーバー側で証明書確認（ssh-admin で接続後）
+sudo certbot certificates
+sudo certbot renew --dry-run
+sudo systemctl status snap.certbot.renew.timer
+```
+
+> 注: 上記 `example.com` は説明用の仮ドメイン。実行時は実ドメインへ置き換える。
+
+SSL の詳細運用（手動実行手順、失敗時の切り分け）は `docs/SSL_OPERATION.md` を参照。
 
 ### 1-4. 実行内容の確認
 
@@ -361,8 +430,12 @@ dnf install podman podman-docker
 
 ```bash
 # ドライランでテスト
-certbot certonly --standalone --dry-run -d nara-sketch.com
+certbot certonly --standalone --dry-run -d example.com
 ```
+
+> 注: `-d example.com` はサンプル。実行時は実際に証明書を発行したいドメインを指定する。
+
+詳細な切り分け手順: `docs/SSL_OPERATION.md`
 
 ### ジオブロック（firewalld ipset）で Playbook が失敗する
 
