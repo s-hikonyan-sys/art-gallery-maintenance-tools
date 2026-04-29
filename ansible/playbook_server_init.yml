@@ -25,6 +25,8 @@
 #   init-ssl         : Let's Encrypt 証明書取得
 #   init-ghcr        : GHCR 認証設定
 #   init-fail2ban    : Fail2ban（SSH ブルートフォース対策）
+#   init-ssh-lockdown: SSH 強制（root 禁止・パスワード認証禁止・AllowUsers ssh-admin）
+#   init-admin-ssh   : ssh-admin ユーザーのみ（users と併せて init-users に含まれる）
 
 - name: Initialize art-gallery production server
   hosts: production-init
@@ -69,5 +71,6 @@
           - "   e) deploy_frontend.yml"
           - "   f) deploy_nginx.yml"
           - ""
-          - "接続確認コマンド ({{ app_user }} ユーザーで):"
-          - "  ssh {{ app_user }}@{{ ansible_host }}"
+          - "SSH 管理ユーザー（手元・release-tools の prod_ssh_user）で接続確認:"
+          - "  ssh -i <管理用秘密鍵> {{ admin_user }}@{{ ansible_host }}"
+          - "（{{ app_user }} はデプロイ用。AllowUsers により SSH ログインは不可）"

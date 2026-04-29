@@ -16,6 +16,10 @@ init_host: "YOUR_VPS_GLOBAL_IP"
 # 初回接続に使うローカルの SSH 秘密鍵パス (AlmaLinux 標準ユーザー alma 用)
 init_ssh_key: "~/.ssh/id_ed25519"
 
+# ssh-admin に登録する公開鍵の1行（多くの場合 Phase 0-3 で alma に送った鍵と同じ = sakura_init_key.pub の中身）
+# GitHub Actions の server_init ワークフローでは INIT_SSH_PRIVATE_KEY から自動算出して注入する
+admin_ssh_public_key: "ssh-ed25519 AAAAC3Nza... same-as-or-different-from-deploy-key"
+
 # ============================================================
 # デプロイ SSH 鍵 (GitHub Actions が接続する artgallery ユーザー用)
 # PROD_SSH_PRIVATE_KEY に対応する公開鍵の中身を貼り付け

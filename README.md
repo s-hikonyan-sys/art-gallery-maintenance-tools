@@ -57,6 +57,7 @@ cp ansible/server_init_vars.yml.example ansible/server_init_vars.yml
 nano ansible/server_init_vars.yml
 
 # サーバー初期構築実行（Docker / firewalld / 高リスク国ジオブロック HTTP(S) / Fail2ban / SSL 等）
+# 完了後は SSH は ssh-admin のみ（alma は不可）。変数に admin_ssh_public_key が必要。
 make server-init
 ```
 

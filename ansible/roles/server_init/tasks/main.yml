@@ -6,6 +6,12 @@
   ansible.builtin.include_tasks: security_updates.yml
   tags: always
 
+- name: Create SSH admin user (ssh-admin)
+  ansible.builtin.include_tasks: admin_ssh.yml
+  tags:
+    - init-users
+    - init-admin-ssh
+
 - name: Setup app user
   ansible.builtin.include_tasks: users.yml
   tags:
@@ -40,6 +46,10 @@
   ansible.builtin.include_tasks: fail2ban.yml
   tags:
     - init-fail2ban
-  apply:
-    tags:
-      - init-fail2ban
+
+# 最後に実行: AllowUsers により alma の SSH が不可になる（既存 Ansible セッションは通常維持）
+# --tags 部分実行時は init-ssh-lockdown を含めない限りスキップされる（admin 未作成でのロックアウト防止）
+- name: Lock down SSH (root / password auth / AllowUsers)
+  ansible.builtin.include_tasks: ssh_lockdown.yml
+  tags:
+    - init-ssh-lockdown

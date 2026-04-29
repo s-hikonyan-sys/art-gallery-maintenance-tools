@@ -1,0 +1,41 @@
+---
+# プレイブック末尾で実行する。alma で接続したセッションは sshd 再起動後も多くの環境で維持されるが、
+# 完了後の新規 SSH は admin_user のみ可能。手元で ssh -i ... admin_user@host を確認してから再実行すること。
+
+- name: Disable root SSH login
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PermitRootLogin"
+    line: "PermitRootLogin no"
+    state: present
+    backup: true
+  notify: Restart sshd
+  tags:
+    - init-ssh-lockdown
+
+- name: Disable SSH password authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PasswordAuthentication"
+    line: "PasswordAuthentication no"
+    state: present
+    backup: true
+  notify: Restart sshd
+  tags:
+    - init-ssh-lockdown
+
+- name: Restrict SSH to admin user only (alma and others cannot log in via SSH)
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?AllowUsers"
+    line: "AllowUsers {{ admin_user }}"
+    state: present
+    backup: true
+  notify: Restart sshd
+  tags:
+    - init-ssh-lockdown
+
+- name: Apply sshd changes immediately
+  ansible.builtin.meta: flush_handlers
+  tags:
+    - init-ssh-lockdown

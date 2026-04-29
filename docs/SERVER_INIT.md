@@ -8,7 +8,8 @@ OS 再インストール後に本番サーバーを復旧する手順書。
 |:---|:---|
 | OS | AlmaLinux 10.1 |
 | さくらのVPS | v5 / SSD 50GB / 仮想2Core / 2GB メモリ |
-| Ansible Playbook 接続ユーザー | `alma`（AlmaLinux 標準初期ユーザー） |
+| 初回 Ansible 接続ユーザー | `alma`（AlmaLinux 標準初期ユーザー） |
+| Playbook 完了後の SSH 接続ユーザー | `ssh-admin`（`AllowUsers` により `alma` は SSH 不可） |
 
 > 他のバージョンでも基本的に動作するが、AlmaLinux のバージョンが異なる場合は `ansible/roles/server_init/tasks/docker.yml` の `docker_repo_url` を確認すること。
 
@@ -33,7 +34,7 @@ OS 再インストール後に本番サーバーを復旧する手順書。
 | フェーズ | 作業場所 | ツール |
 |:---|:---|:---|
 | **Phase 0**: OS インストール後の手動作業 | ローカル WSL2 + さくらのVPS シリアルコンソール | `ssh-keygen`, `ssh-copy-id` |
-| Phase 1: Ansible 実行 | ローカル WSL2 または GitHub Actions | `make server-init` |
+| Phase 1: Ansible 実行（`alma` で接続 → 末尾で SSH を `ssh-admin` のみに制限） | ローカル WSL2 または GitHub Actions | `make server-init` |
 | Phase 2: Secrets 更新 | GitHub | ブラウザ |
 | Phase 3: アプリデプロイ | GitHub Actions | `art-gallery-release-tools` |
 
@@ -91,7 +92,9 @@ ssh-copy-id -i ~/.ssh/sakura_init_key.pub alma@YOUR_VPS_GLOBAL_IP
 ssh -i ~/.ssh/sakura_init_key alma@YOUR_VPS_GLOBAL_IP
 ```
 
-> パスワードなしで接続できれば成功。以後の Ansible はこの鍵で接続する。
+> **成功の目安:** `alma` ユーザーの**ログインパスワード**（パスワード認証）は求められず、公開鍵だけでログインできること。Phase 1 の Ansible はこの鍵で **`alma` として**接続する（完了後は `ssh-admin` のみが SSH 可能になる）。
+>
+> **鍵のパスフレーズについて:** 0-1 で秘密鍵にパスフレーズを付けた場合、`Enter passphrase for key '.../sakura_init_key':` のように**鍵のパスフレーズ**を聞かれるのは正常である（VPS 側のパスワード認証とは別）。毎回の入力を減らすには `eval "$(ssh-agent -s)"` のあと `ssh-add ~/.ssh/sakura_init_key` でエージェントに載せる。
 
 ---
 
@@ -115,6 +118,17 @@ ssh -i ~/.ssh/sakura_init_key alma@YOUR_VPS_GLOBAL_IP
 
 参考: [さくらのVPS セキュリティ設定ガイド - SSH 接続でサーバーにログイン](https://manual.sakura.ad.jp/vps/support/security/firstsecurity.html)
 
+### Phase 0 と Phase 1 のユーザー整理
+
+| 段階 | SSH でログインするユーザー | 用途 |
+|:---|:---|:---|
+| Phase 0（手動） | `alma` | 公開鍵登録まで。OS インストール時に作成したユーザー |
+| Phase 1（Ansible 実行中） | `alma`（inventory の `ansible_user`） | 初回構築プレイブックは `alma` で接続する |
+| Phase 1 完了後 | `ssh-admin` のみ | `AllowUsers ssh-admin` により `alma`・`artgallery` などは **SSH ログイン不可**（`artgallery` はデプロイ専用） |
+| デプロイ（release-tools / GitHub Actions） | `ssh-admin`（`PROD_SSH_USER`） | `inventory/production.yml` の `prod_ssh_user` と一致させる |
+
+`ssh-admin` は Playbook 内で作成され、**`admin_ssh_public_key`** に指定した公開鍵でログインする。多くの場合、0-3 で `alma` に登録した `sakura_init_key.pub` の1行と同じ内容を `server_init_vars.yml` に書けば、同じ秘密鍵で `ssh-admin` に接続できる。
+
 ---
 
 ## Phase 1: サーバー初期構築
@@ -132,13 +146,16 @@ nano server_init_vars.yml   # 各項目を設定
 | 変数 | 内容 | 例 |
 |:---|:---|:---|
 | `init_host` | VPS の IP アドレス | `YOUR_VPS_GLOBAL_IP` |
-| `init_ssh_key` | AlmaLinux 初期ユーザー用 SSH 秘密鍵 | `~/.ssh/id_ed25519` |
-| `deploy_ssh_public_key` | デプロイ用公開鍵（`PROD_SSH_PRIVATE_KEY` 対応） | `ssh-ed25519 AAAA...` |
+| `init_ssh_key` | AlmaLinux 初期ユーザー用 SSH 秘密鍵 | `~/.ssh/sakura_init_key` |
+| `admin_ssh_public_key` | `ssh-admin` に登録する公開鍵の1行（通常は `sakura_init_key.pub` と同じ） | `ssh-ed25519 AAAA...` |
+| `deploy_ssh_public_key` | デプロイ用公開鍵（`PROD_SSH_PRIVATE_KEY` 対応・`artgallery` ユーザー） | `ssh-ed25519 AAAA...` |
 | `certbot_email` | Let's Encrypt 通知メール | `you@example.com` |
 | `ghcr_token` | GitHub PAT（`read:packages` スコープ） | `ghp_xxx...` |
 | `ghcr_username` | GitHub ユーザー名 | `s-hikonyan-sys` |
 
-> **`deploy_ssh_public_key` の確認方法**: `PROD_SSH_PRIVATE_KEY` に対応する公開鍵ファイル（`~/.ssh/xxx.pub` または `ssh-keygen -y -f ~/.ssh/xxx`）の内容を貼り付けてください。
+> **`admin_ssh_public_key` の確認方法**: 0-1〜0-3 で使った公開鍵ファイルの内容をそのまま貼る（例: `cat ~/.ssh/sakura_init_key.pub`）。**`init_ssh_key` に対応する公開鍵と一致**させないと、Playbook 完了後に `ssh-admin` でログインできず詰む。
+>
+> **`deploy_ssh_public_key` の確認方法**: `PROD_SSH_PRIVATE_KEY` に対応する公開鍵（`~/.ssh/xxx.pub` または `ssh-keygen -y -f ~/.ssh/xxx`）。GitHub Actions が `artgallery` に接続する鍵であり、管理用の `sakura_init_key` と別でもよい。
 
 ### 1-2. Ansible collections をインストール
 
@@ -165,13 +182,24 @@ cd ansible && ansible-playbook playbook_server_init.yml \
   --tags "init-ssl"
 ```
 
+### 1-3a. 完了後の SSH 確認（推奨）
+
+Playbook が成功したら、**別のターミナル**で `ssh-admin` 接続を試す（既存の `alma` セッションは維持されることが多いが、設定誤りのときの保険になる）。
+
+```bash
+ssh -i ~/.ssh/sakura_init_key ssh-admin@YOUR_VPS_GLOBAL_IP
+```
+
+問題なければ `alma` への SSH は拒否される（`Permission denied`）ことを確認してよい。
+
 ### 1-4. 実行内容の確認
 
 Playbook が完了すると以下が設定されます:
 
 - [x] セキュリティアップデート適用
-- [x] `artgallery` ユーザー作成（sudo 権限・SSH 公開鍵登録済み）
-- [x] SSH パスワード認証の無効化
+- [x] **`ssh-admin` ユーザー作成**（wheel・sudo NOPASSWD・`admin_ssh_public_key` 登録・docker グループ）
+- [x] `artgallery` ユーザー作成（sudo 権限・デプロイ用 SSH 公開鍵登録済み。**AllowUsers により SSH ログインは不可**）
+- [x] **SSH 強制**（`PermitRootLogin no`・パスワード認証無効・**`AllowUsers ssh-admin` のみ** → `alma` は SSH 不可）
 - [x] Docker CE + Docker Compose プラグインのインストール
 - [x] firewalld の有効化（SSH / HTTP / HTTPS のみ許可）
 - [x] **高リスク国ジオブロック**（[ipdeny.com](https://www.ipdeny.com/ipblocks/) の国別 IPv4 帯域を firewalld ipset に取り込み、**TCP 80 / 443 宛てのみ DROP**。SSH は対象外 → GitHub Actions からの SSH は阻害しない）
@@ -196,6 +224,8 @@ ansible-playbook playbook_server_init.yml \
   --extra-vars "@server_init_vars.yml" \
   --tags "init-fail2ban"
 ```
+
+`--tags` で部分実行する場合、`init-ssh-lockdown` を含めない限り **`AllowUsers ssh-admin` は再適用されない**（既にロック済みのサーバーでは通常問題ない）。**初回フル実行以外で `init-ssh-lockdown` だけを単独実行すると、`ssh-admin` が未作成のときに接続不能になる**ので避けること。
 
 ---
 
@@ -262,7 +292,7 @@ YOUR_VPS_GLOBAL_IP ecdsa-sha2-nistp256 AAAA...
 | 名前 | 種別 | 内容 |
 |:---|:---|:---|
 | `PROD_HOST` | Variable | VPS の IP（変わっていれば更新） |
-| `PROD_SSH_USER` | Variable | `artgallery`（変わらなければ不要） |
+| `PROD_SSH_USER` | Variable | **`ssh-admin`**（本プレイブック完了後の SSH ユーザー。未設定なら設定） |
 | `PROD_SSH_PRIVATE_KEY` | Secret | デプロイ用秘密鍵（変わらなければ不要） |
 
 ---
@@ -284,7 +314,7 @@ YOUR_VPS_GLOBAL_IP ecdsa-sha2-nistp256 AAAA...
 
 ## トラブルシュート
 
-### `alma` ユーザーで SSH 接続できない
+### Phase 0 で `alma` ユーザーに SSH 接続できない
 
 ```bash
 # Sakura VPS のシリアルコンソールから接続して確認
@@ -293,11 +323,21 @@ ip addr show
 systemctl status sshd
 ```
 
+### Playbook 完了後に `alma` で SSH できない
+
+想定どおりである。`AllowUsers ssh-admin` 適用後は **`ssh-admin` で接続**する。
+
+```bash
+ssh -i ~/.ssh/sakura_init_key ssh-admin@YOUR_VPS_GLOBAL_IP
+```
+
 ### Ansible 実行中に `UNREACHABLE` エラー
 
 ```bash
-# SSH 接続を手動テスト
-ssh -i ~/.ssh/id_ed25519 alma@YOUR_VPS_GLOBAL_IP
+# Phase 1 実行中は alma で接続テスト
+ssh -i ~/.ssh/sakura_init_key alma@YOUR_VPS_GLOBAL_IP
+# Playbook 成功後は ssh-admin で
+ssh -i ~/.ssh/sakura_init_key ssh-admin@YOUR_VPS_GLOBAL_IP
 # known_hosts をクリア（OS 再インストール後は必須）
 ssh-keygen -R YOUR_VPS_GLOBAL_IP
 ```

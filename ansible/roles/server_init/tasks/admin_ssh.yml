@@ -1,0 +1,47 @@
+---
+# SSH 管理ユーザー（ssh-admin）を作成する。
+# 初回 Playbook は inventory の alma で接続するが、ssh_lockdown.yml 適用後は
+# admin_user のみが SSH ログイン可能になる（art-gallery-release-tools の prod_ssh_user と一致させる）。
+
+- name: Ensure SSH admin user exists
+  ansible.builtin.user:
+    name: "{{ admin_user }}"
+    groups: wheel
+    append: yes
+    shell: /bin/bash
+    create_home: yes
+    state: present
+    comment: "SSH administration (Ansible / prod_ssh_user)"
+  tags:
+    - init-users
+    - init-admin-ssh
+
+- name: Create .ssh directory for SSH admin user
+  ansible.builtin.file:
+    path: "/home/{{ admin_user }}/.ssh"
+    state: directory
+    mode: "0700"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+  tags:
+    - init-users
+    - init-admin-ssh
+
+- name: Install SSH public key for admin user
+  ansible.builtin.authorized_key:
+    user: "{{ admin_user }}"
+    key: "{{ admin_ssh_public_key | mandatory('admin_ssh_public_key must be set in server_init_vars.yml (same line as ssh-copy-id pub, or ssh-keygen -y -f init key)') }}"
+    state: present
+  tags:
+    - init-users
+    - init-admin-ssh
+
+- name: Allow admin user to sudo without password (required for Ansible become)
+  ansible.builtin.copy:
+    content: "{{ admin_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    dest: "/etc/sudoers.d/{{ admin_user }}"
+    mode: "0440"
+    validate: "visudo -cf %s"
+  tags:
+    - init-users
+    - init-admin-ssh

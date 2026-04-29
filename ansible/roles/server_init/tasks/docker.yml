@@ -58,9 +58,9 @@
   tags:
     - init-docker
 
-- name: Add alma user to docker group
+- name: Add SSH admin user to docker group (release-tools Ansible / docker login)
   ansible.builtin.user:
-    name: alma
+    name: "{{ admin_user }}"
     groups: docker
     append: yes
   tags:

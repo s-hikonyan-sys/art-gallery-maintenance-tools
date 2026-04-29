@@ -6,8 +6,8 @@ name: Server Initial Setup
 #   - OS 再インストール直後（手動実行）
 #   - 原則として二度とは実行しないが、サーバー移行・障害復旧時に使用する
 #
-# このワークフローは初回接続ユーザー "alma" を使用する。
-# セットアップ完了後は artgallery ユーザーで接続するため、
+# 初回接続は inventory の "alma"。Playbook 末尾で AllowUsers ssh-admin のみに制限する。
+# セットアップ完了後の SSH は ssh-admin（GitHub Variables の PROD_SSH_USER と一致させる）。
 # art-gallery-release-tools のワークフローを順番に実行すること。
 
 on:
@@ -59,15 +59,17 @@ jobs:
 
       - name: Write server init vars file
         run: |
-          cat > ansible/server_init_vars.yml << 'VARS_EOF'
-          ---
-          init_host: "${{ vars.PROD_HOST }}"
-          init_ssh_key: "~/.ssh/init_key"
-          deploy_ssh_public_key: "${{ secrets.PROD_SSH_PUBLIC_KEY }}"
-          certbot_email: "${{ vars.CERTBOT_EMAIL }}"
-          ghcr_token: "${{ secrets.GH_TOKEN_FOR_GHCR }}"
-          ghcr_username: "${{ vars.GITHUB_OWNER }}"
-          VARS_EOF
+          ADMIN_PUB=$(ssh-keygen -y -f ~/.ssh/init_key)
+          {
+            echo "---"
+            echo "init_host: \"${{ vars.PROD_HOST }}\""
+            echo "init_ssh_key: \"~/.ssh/init_key\""
+            echo "deploy_ssh_public_key: \"${{ secrets.PROD_SSH_PUBLIC_KEY }}\""
+            echo "admin_ssh_public_key: \"${ADMIN_PUB}\""
+            echo "certbot_email: \"${{ vars.CERTBOT_EMAIL }}\""
+            echo "ghcr_token: \"${{ secrets.GH_TOKEN_FOR_GHCR }}\""
+            echo "ghcr_username: \"${{ vars.GITHUB_OWNER }}\""
+          } > ansible/server_init_vars.yml
           chmod 600 ansible/server_init_vars.yml
 
       - name: Run server init playbook (skip SSL)

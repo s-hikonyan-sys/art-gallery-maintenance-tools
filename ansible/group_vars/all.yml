@@ -2,6 +2,9 @@
 # サーバー初期構築共通変数
 # 機密値・環境固有値は server_init_vars.yml（.gitignore 対象）に記載する
 
+# SSH 管理ユーザー（server_init 完了後の SSH / art-gallery-release-tools の prod_ssh_user）
+admin_user: "ssh-admin"
+
 # アプリケーション設定
 app_name: "art-gallery"
 app_user: "artgallery"
