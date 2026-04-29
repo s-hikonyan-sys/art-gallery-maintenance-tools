@@ -6,6 +6,12 @@
 # (server_init_vars.yml は .gitignore 対象)
 
 # ============================================================
+# ローカル実行時の事前設定（必須）
+# - このファイルの値は Playbook 実行「前」に手元で設定する
+# - 特に init_ssh_key / admin_ssh_public_key の不一致はロックアウトの原因になる
+# ============================================================
+
+# ============================================================
 # VPS 接続情報
 # ============================================================
 
@@ -14,11 +20,11 @@
 init_host: "YOUR_VPS_GLOBAL_IP"
 
 # 初回接続に使うローカルの SSH 秘密鍵パス (AlmaLinux 標準ユーザー alma 用)
-init_ssh_key: "~/.ssh/id_ed25519"
+init_ssh_key: "~/.ssh/sakura_init_key"
 
 # ssh-admin に登録する公開鍵の1行（多くの場合 Phase 0-3 で alma に送った鍵と同じ = sakura_init_key.pub の中身）
 # GitHub Actions の server_init ワークフローでは INIT_SSH_PRIVATE_KEY から自動算出して注入する
-admin_ssh_public_key: "ssh-ed25519 AAAAC3Nza... same-as-or-different-from-deploy-key"
+admin_ssh_public_key: "ssh-ed25519 AAAAC3Nza... from-sakura_init_key.pub"
 
 # ============================================================
 # デプロイ SSH 鍵 (GitHub Actions が接続する artgallery ユーザー用)
@@ -42,6 +48,11 @@ ghcr_username: "s-hikonyan-sys"
 # 任意: Fail2ban / ジオブロックの上書き
 # （省略時は ansible/group_vars/all.yml のデフォルトを使用）
 # ============================================================
+# 注意:
+# - 以下の項目は「この vars で設定するもの」ではなく、Playbook 実行後にサーバー側へ作成/反映される結果:
+#   - ssh-admin ユーザー作成 + admin_ssh_public_key 登録
+#   - artgallery ユーザー作成 + deploy_ssh_public_key 登録
+#   - AllowUsers ssh-admin 適用（alma の SSH ログイン禁止）
 # 自宅など固定グローバルIPを登録すると、Fail2ban による誤BANを避けやすい
 # fail2ban_ignore_ips:
 #   - "203.0.113.50/32"
