@@ -11,24 +11,28 @@
 
 ## 1. GHCR PAT ローテーション（最重要）
 
-### 1-1. GitHub で新しい PAT を作成
+### 1-1. GitHub で新しい PAT を作成（fine-grained 画面）
+
+この手順は GitHub の `New fine-grained personal access token` 画面に合わせている。
 
 1. GitHub 右上アイコン → `Settings`。
-2. 左メニュー `Developer settings` → `Personal access tokens`。
-3. 方式を選択（このリポジトリ運用では `Tokens (classic)` 推奨）。
-4. `Generate new token` を選択し、用途が分かる名前・有効期限を設定。
-5. 用途に応じてスコープを付与（下表）。
-6. 生成直後に表示されるトークン文字列を安全な場所へ一時保存（再表示不可）。
+2. 左メニュー `Developer settings` → `Personal access tokens` → `Fine-grained tokens`。
+3. `Generate new token` を開き、`Token name` と `Expiration` を設定。
+4. `Repository access` で `Only select repositories` を選び、対象リポジトリを追加（次節参照）。
+5. `Permissions` セクションで `Add permissions` を押す。
+6. `Repositories` タブで `Packages` を検索して追加し、権限を `Read and write` に設定。
+7. `Permissions` に `Packages` が表示されたことを確認して `Generate token`。
+8. 表示されたトークン文字列を安全な場所へ一時保存（再表示不可）。
 
 #### PAT 設定（GHCR / push + pull 前提）
 
 | 用途 | 推奨方式 | 必須権限 |
 |:---|:---|:---|
-| CI/CD および運用で push + pull | classic PAT | `write:packages` + `read:packages` |
+| CI/CD および運用で push + pull | fine-grained PAT | `Packages: Read and write` |
 
-- private repository を扱う運用では、状況により `repo` が必要になる場合がある。
-- `delete:packages` は、パッケージ削除運用をしない限り付与しない。
 - 本リポジトリ運用では `push + pull` を前提としてトークンを作成する。
+- `Permissions` が `No repository permissions added yet` のままだと失敗する。
+- `delete:packages` は、パッケージ削除運用をしない限り付与しない。
 
 #### fine-grained の `Repository access` で選ぶ対象
 
@@ -53,14 +57,11 @@
 - 本番サーバー側は GHCR から `docker pull` する。
 - つまり PAT 設計では、**GitHub リポジトリアクセス要件**と**GHCR アクセス要件**を分けて考える。
 
-#### fine-grained PAT を使う場合
+#### classic PAT を使う場合（代替）
 
-- `Permissions` が空（`No account permissions added yet`）だと失敗する。
-- 少なくとも `Packages` を追加し、用途に応じて `Read` または `Read and write` を設定する。
-- `Repository access` は対象リポジトリだけに絞る（`Only select repositories` 推奨）。
-- `Only select repositories` では、GHCR の push/pull に使うリポジトリのみ選択する。
-- 一時的に `All repositories` を使うことは可能だが、確認後に最小範囲へ絞る。
-- `Tokens (classic)` には `Repository access` の選択項目はなく、scope 指定で権限を付与する。
+- `Tokens (classic)` を選択し、`write:packages` + `read:packages` を付与する。
+- classic には `Repository access` の選択項目はない（scope 指定のみ）。
+- fine-grained で問題が出る場合のフォールバックとして利用する。
 
 ### 1-2. 変数を更新
 
