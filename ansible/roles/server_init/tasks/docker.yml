@@ -73,6 +73,24 @@
   tags:
     - init-docker
 
+# release-tools 等の Ansible が community.docker を使う際、対象ホストの Python に
+# requests / docker が必要。AlmaLinux 10 では dnf に該当パッケージがないため pip で入れる。
+- name: Install python3-pip for Ansible Docker module dependencies
+  ansible.builtin.dnf:
+    name: python3-pip
+    state: present
+  tags:
+    - init-docker
+
+- name: Install Python libraries for Ansible Docker modules (requests, docker)
+  ansible.builtin.pip:
+    name:
+      - requests
+      - docker
+    executable: pip3
+  tags:
+    - init-docker
+
 - name: Show Docker version
   ansible.builtin.debug:
     msg: "Docker installed successfully. Run 'docker info' for details."

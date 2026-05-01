@@ -19,7 +19,7 @@
 # タグ一覧（個別実行可能）:
 #   init-security    : セキュリティアップデート + ベースパッケージ
 #   init-users       : app ユーザー作成・SSH 設定
-#   init-docker      : Docker CE インストール
+#   init-docker      : Docker CE インストール + 対象ホスト用 pip（requests/docker: community.docker 用）
 #   init-firewall    : firewalld + 高リスク国ジオブロック（HTTP/HTTPS のみ）
 #   init-directories : デプロイメントディレクトリ作成
 #   init-ssl         : Let's Encrypt 証明書取得
