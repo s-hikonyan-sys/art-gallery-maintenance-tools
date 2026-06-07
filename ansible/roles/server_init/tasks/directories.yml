@@ -56,6 +56,28 @@
   tags:
     - init-directories
 
+- name: Create backend contact queue directory
+  ansible.builtin.file:
+    path: "{{ deployment_dir }}/src/{{ backend_repo_name }}/contact_queue"
+    state: directory
+    mode: '0755'
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+  tags:
+    - init-directories
+
+# nginx コンテナは root 起動のためログファイル UID はコンテナ内 nginx ユーザーになる。
+# ディレクトリは artgallery 所有 + setgid で artgallery が管理可能にする。
+- name: Ensure nginx log directory is group-writable with setgid
+  ansible.builtin.file:
+    path: "{{ deployment_dir }}/logs/nginx"
+    state: directory
+    mode: '2775'
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+  tags:
+    - init-directories
+
 - name: Verify directory structure
   ansible.builtin.find:
     paths: "{{ deployment_dir }}"

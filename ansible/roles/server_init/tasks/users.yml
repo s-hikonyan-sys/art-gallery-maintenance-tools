@@ -5,6 +5,7 @@
 - name: Create app user group
   ansible.builtin.group:
     name: "{{ app_user }}"
+    gid: "{{ app_gid | mandatory('app_gid must be set in group_vars') }}"
     state: present
   tags:
     - init-users
@@ -12,6 +13,7 @@
 - name: Create app user
   ansible.builtin.user:
     name: "{{ app_user }}"
+    uid: "{{ app_uid | mandatory('app_uid must be set in group_vars') }}"
     group: "{{ app_user }}"
     groups: wheel
     append: yes
