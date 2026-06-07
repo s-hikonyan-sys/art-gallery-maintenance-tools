@@ -24,6 +24,9 @@ deployment_subdirs:
   - "scripts"
   - "tmp"
 
+# SNSフィード JSON 配信ディレクトリ（Nginx が /social/ として公開）
+social_feed_dir: "/var/www/social"
+
 # firewalld 許可サービス
 firewall_services:
   - ssh

@@ -46,6 +46,16 @@
   tags:
     - init-directories
 
+- name: Create SNS feed public directory
+  ansible.builtin.file:
+    path: "{{ social_feed_dir }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+  tags:
+    - init-directories
+
 - name: Verify directory structure
   ansible.builtin.find:
     paths: "{{ deployment_dir }}"
