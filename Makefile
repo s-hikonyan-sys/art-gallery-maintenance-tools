@@ -127,11 +127,10 @@ server-verify:
 	pytest -q /home/homepage/project/my_homepage/replace_work/art-gallery-maintenance-tools/tests/testinfra
 
 rotate-ghcr-token:
-	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \
+	cd $(ANSIBLE_DIR) && ansible-playbook playbook_init_ghcr.yml \
 	  --inventory inventory/production_init.yml \
 	  --extra-vars "@server_init_vars.yml" \
-	  --extra-vars "@$(OPERATIONS_CONN_VARS)" \
-	  --tags "init-ghcr"
+	  --extra-vars "@$(OPERATIONS_CONN_VARS)"
 
 rotate-ssh-admin-key:
 	cd $(ANSIBLE_DIR) && ansible-playbook playbook_server_init.yml \

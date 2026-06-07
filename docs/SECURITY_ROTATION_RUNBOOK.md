@@ -75,7 +75,7 @@
 
 **`art-gallery-maintenance-tools`**
 
-- `GH_TOKEN_FOR_GHCR`（`server_init.yml` で `ghcr_token` として注入）
+- `GH_TOKEN_FOR_GHCR`（`server_init.yml` / `init_ghcr.yml` で `ghcr_token` として注入）
 
 **`art-gallery-release-tools`**
 
@@ -110,6 +110,14 @@
 - GHCR push/pull を行うトークンは `Packages: Read and write` を付与する。
 
 ### 1-3. サーバーへ反映
+
+**GitHub Actions（推奨）**
+
+1. `art-gallery-maintenance-tools` → **Actions** → **Init GHCR Authentication**
+2. 確認入力に `ghcr` と入力して実行
+3. 必要な Secrets / Variables が未設定の場合は先に [SERVER_INIT.md の Phase 2](SERVER_INIT.md#phase-2-github-secrets--variables-の更新) を参照
+
+**ローカル（Makefile）**
 
 ```bash
 make rotate-ghcr-token

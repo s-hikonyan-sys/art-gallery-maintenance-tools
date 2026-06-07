@@ -1,0 +1,51 @@
+---
+# GHCR (GitHub Container Registry) 認証の更新専用プレイブック
+#
+# server_init ロールの ghcr.yml のみを実行する。
+# playbook_server_init.yml --tags init-ghcr とは異なり、
+# security_updates（tags: always）等は実行しない。
+#
+# 必要な変数（server_init_vars.yml）:
+#   init_host          : VPS の IP または FQDN
+#   init_ssh_key       : SSH 秘密鍵パス（ローカル実行時）
+#   ghcr_token         : GitHub PAT（read:packages 以上）
+#   ghcr_username      : GitHub ユーザー名
+#
+# 実行方法（Makefile 経由を推奨）:
+#   make rotate-ghcr-token
+#
+# 直接実行（初回構築後・ssh-admin 接続）:
+#   cd ansible && ansible-playbook playbook_init_ghcr.yml \
+#     --inventory inventory/production_init.yml \
+#     --extra-vars "@server_init_vars.yml" \
+#     --extra-vars "@vars/connection_operations.yml"
+#
+# GitHub Actions:
+#   art-gallery-maintenance-tools → Actions → Init GHCR Authentication
+
+- name: Update GHCR authentication on production server
+  hosts: production-init
+  gather_facts: no
+
+  pre_tasks:
+    - name: Confirm GHCR authentication update
+      ansible.builtin.debug:
+        msg: >-
+          GHCR 認証を更新します。
+          対象ホスト: {{ ansible_host }}
+          実行ユーザー: {{ ansible_user }}
+          app_user: {{ app_user }}
+
+  tasks:
+    - name: Configure GHCR authentication
+      ansible.builtin.import_role:
+        name: server_init
+        tasks_from: ghcr
+
+  post_tasks:
+    - name: Print verification hint
+      ansible.builtin.debug:
+        msg:
+          - "GHCR 認証の更新が完了しました。"
+          - "確認例（サーバー上）:"
+          - "  sudo -u {{ app_user }} DOCKER_CONFIG=/home/{{ app_user }}/.docker docker pull ghcr.io/{{ ghcr_username }}/art-gallery-nginx:1.0.0"

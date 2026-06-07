@@ -1,0 +1,96 @@
+name: Init GHCR Authentication
+
+# VPS 上の artgallery ユーザー向け GHCR docker login を更新する。
+# playbook_init_ghcr.yml のみ実行（security_updates 等は実行しない）。
+#
+# 実行タイミング:
+#   - GHCR PAT のローテーション後
+#   - docker pull で "error from registry: denied" が出たとき
+#
+# 必要な Secrets（art-gallery-maintenance-tools）:
+#   PROD_SSH_PRIVATE_KEY  : ssh-admin 接続用秘密鍵（パスフレーズなし）
+#   PROD_SSH_KNOWN_HOSTS  : VPS の SSH ホスト鍵
+#   GH_TOKEN_FOR_GHCR     : GitHub PAT（read:packages 以上）
+#
+# 必要な Variables:
+#   PROD_HOST             : VPS の IP または FQDN
+#   GH_OWNER              : GitHub ユーザー名（例: s-hikonyan-sys）
+#
+# 接続ユーザーは vars/connection_operations.yml の ssh-admin（server-init 完了後）。
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: |
+          GHCR 認証（docker login）を VPS に反映します。
+          確認のため "ghcr" と入力してください。
+        required: true
+        type: string
+
+jobs:
+  init-ghcr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Validate confirmation input
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "ghcr" ]; then
+            echo "::error::確認入力が 'ghcr' ではありません。実行を中止します。"
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Ansible and collections
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+          ansible-galaxy collection install -r ansible/requirements.yml
+
+      - name: Setup SSH for production (ssh-admin)
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "${{ secrets.PROD_SSH_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Write Ansible vars file
+        run: |
+          if [ -z "${{ vars.PROD_HOST }}" ]; then
+            echo "::error::vars.PROD_HOST が未設定です。"
+            exit 1
+          fi
+          if [ -z "${{ vars.GH_OWNER }}" ]; then
+            echo "::error::vars.GH_OWNER が未設定です。"
+            exit 1
+          fi
+          {
+            echo "---"
+            echo "init_host: \"${{ vars.PROD_HOST }}\""
+            echo "init_ssh_key: \"~/.ssh/deploy_key\""
+            echo "ghcr_token: \"${{ secrets.GH_TOKEN_FOR_GHCR }}\""
+            echo "ghcr_username: \"${{ vars.GH_OWNER }}\""
+          } > ansible/server_init_vars.yml
+          chmod 600 ansible/server_init_vars.yml
+
+      - name: Run init-ghcr playbook
+        run: |
+          cd ansible
+          ansible-playbook playbook_init_ghcr.yml \
+            --inventory inventory/production_init.yml \
+            --extra-vars "@server_init_vars.yml" \
+            --extra-vars "@vars/connection_operations.yml"
+
+      - name: Remove sensitive files
+        if: always()
+        run: rm -f ~/.ssh/deploy_key ansible/server_init_vars.yml
+
+      - name: Print next steps
+        run: |
+          echo "GHCR 認証の更新が完了しました。"
+          echo "art-gallery-release-tools で Deploy Nginx / Deploy Backend 等を再実行してください。"

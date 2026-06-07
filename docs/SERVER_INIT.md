@@ -372,16 +372,18 @@ YOUR_VPS_GLOBAL_IP ecdsa-sha2-nistp256 AAAA...
 
 ### 2-2. GitHub Secrets / Variables を更新
 
-まず、`art-gallery-maintenance-tools` リポジトリ（`server_init` workflow 用）で以下を定義/確認する:
+まず、`art-gallery-maintenance-tools` リポジトリ（`server_init` / `init_ghcr` workflow 用）で以下を定義/確認する:
 
 | 名前 | 種別 | 内容 |
 |:---|:---|:---|
-| `PROD_HOST` | Variable | 初期化対象 VPS の IP（`server_init` の接続先） |
-| `PROD_DOMAIN_NAME` | Variable | SSL 証明書発行対象ドメイン |
-| `CERTBOT_EMAIL` | Variable | Let's Encrypt 通知メールアドレス |
+| `PROD_HOST` | Variable | VPS の IP または FQDN |
+| `PROD_DOMAIN_NAME` | Variable | SSL 証明書発行対象ドメイン（`server_init` 用） |
+| `CERTBOT_EMAIL` | Variable | Let's Encrypt 通知メールアドレス（`server_init` 用） |
 | `GH_OWNER` | Variable | GHCR オーナー名（例: `s-hikonyan-sys`） |
-| `INIT_SSH_PRIVATE_KEY` | Secret | 初回接続用秘密鍵（`alma` 接続で使用） |
+| `INIT_SSH_PRIVATE_KEY` | Secret | 初回接続用秘密鍵（`server_init` の alma 接続で使用） |
 | `GH_TOKEN_FOR_GHCR` | Secret | GHCR 認証用トークン（`ghcr_token` として注入） |
+| `PROD_SSH_PRIVATE_KEY` | Secret | `ssh-admin` 接続用秘密鍵（`init_ghcr` 用。パスフレーズなし必須） |
+| `PROD_SSH_KNOWN_HOSTS` | Secret | VPS の SSH ホスト鍵（`init_ghcr` 用） |
 
 次に、`art-gallery-release-tools` リポジトリの Settings → Secrets and variables を更新:
 

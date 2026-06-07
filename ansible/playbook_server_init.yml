@@ -23,7 +23,7 @@
 #   init-firewall    : firewalld + 高リスク国ジオブロック（HTTP/HTTPS のみ）
 #   init-directories : デプロイメントディレクトリ作成
 #   init-ssl         : Let's Encrypt 証明書取得
-#   init-ghcr        : GHCR 認証設定
+#   init-ghcr        : GHCR 認証設定（単独実行は playbook_init_ghcr.yml を推奨）
 #   init-fail2ban    : Fail2ban（SSH ブルートフォース対策）
 #   init-ssh-lockdown: SSH 強制（root 禁止・パスワード認証禁止・AllowUsers ssh-admin）
 #   init-admin-ssh   : ssh-admin ユーザーのみ（users と併せて init-users に含まれる）
