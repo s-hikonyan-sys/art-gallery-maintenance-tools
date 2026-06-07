@@ -1,27 +1,12 @@
 ---
-# GHCR (GitHub Container Registry) 認証の更新専用プレイブック
+# GHCR 認証の更新専用プレイブック
 #
 # server_init ロールの ghcr.yml のみを実行する。
 # playbook_server_init.yml --tags init-ghcr とは異なり、
 # security_updates（tags: always）等は実行しない。
 #
-# 必要な変数（server_init_vars.yml）:
-#   init_host          : VPS の IP または FQDN
-#   init_ssh_key       : SSH 秘密鍵パス（ローカル実行時）
-#   ghcr_token         : GitHub PAT（read:packages 以上）
-#   ghcr_username      : GitHub ユーザー名
-#
-# 実行方法（Makefile 経由を推奨）:
-#   make rotate-ghcr-token
-#
-# 直接実行（初回構築後・ssh-admin 接続）:
-#   cd ansible && ansible-playbook playbook_init_ghcr.yml \
-#     --inventory inventory/production_init.yml \
-#     --extra-vars "@server_init_vars.yml" \
-#     --extra-vars "@vars/connection_operations.yml"
-#
-# GitHub Actions:
-#   art-gallery-maintenance-tools → Actions → Init GHCR Authentication
+# ローカル: make rotate-ghcr-token
+# GitHub Actions: .github/workflows/init_ghcr.yml
 
 - name: Update GHCR authentication on production server
   hosts: production-init

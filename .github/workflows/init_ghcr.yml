@@ -3,20 +3,8 @@ name: Init GHCR Authentication
 # VPS 上の artgallery ユーザー向け GHCR docker login を更新する。
 # playbook_init_ghcr.yml のみ実行（security_updates 等は実行しない）。
 #
-# 実行タイミング:
-#   - GHCR PAT のローテーション後
-#   - docker pull で "error from registry: denied" が出たとき
-#
-# 必要な Secrets（art-gallery-maintenance-tools）:
-#   INIT_SSH_PRIVATE_KEY  : ssh-admin 接続用秘密鍵（server_init と同じ。パスフレーズなし）
-#   GH_TOKEN_FOR_GHCR     : GitHub PAT（read:packages 以上）
-#
-# 必要な Variables:
-#   PROD_HOST             : VPS の IP または FQDN
-#   GH_OWNER              : GitHub ユーザー名（例: s-hikonyan-sys）
-#
-# 接続ユーザーは vars/connection_operations.yml の ssh-admin（server-init 完了後）。
-# known_hosts は server_init.yml と同様、実行時に ssh-keyscan で取得する。
+# SSH / Secrets / Variables は server_init.yml と同じ（INIT_SSH_PRIVATE_KEY 等）。
+# 接続ユーザーは make rotate-ghcr-token と同様 connection_operations.yml の ssh-admin。
 
 on:
   workflow_dispatch:
@@ -51,28 +39,20 @@ jobs:
           sudo apt-get install -y ansible
           ansible-galaxy collection install -r ansible/requirements.yml
 
-      - name: Setup SSH for production (ssh-admin)
+      - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.INIT_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
+          echo "${{ secrets.INIT_SSH_PRIVATE_KEY }}" > ~/.ssh/init_key
+          chmod 600 ~/.ssh/init_key
           ssh-keyscan -t ecdsa "${{ vars.PROD_HOST }}" >> ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Write Ansible vars file
+      - name: Write server init vars file
         run: |
-          if [ -z "${{ vars.PROD_HOST }}" ]; then
-            echo "::error::vars.PROD_HOST が未設定です。"
-            exit 1
-          fi
-          if [ -z "${{ vars.GH_OWNER }}" ]; then
-            echo "::error::vars.GH_OWNER が未設定です。"
-            exit 1
-          fi
           {
             echo "---"
             echo "init_host: \"${{ vars.PROD_HOST }}\""
-            echo "init_ssh_key: \"~/.ssh/deploy_key\""
+            echo "init_ssh_key: \"~/.ssh/init_key\""
             echo "ghcr_token: \"${{ secrets.GH_TOKEN_FOR_GHCR }}\""
             echo "ghcr_username: \"${{ vars.GH_OWNER }}\""
           } > ansible/server_init_vars.yml
@@ -88,7 +68,7 @@ jobs:
 
       - name: Remove sensitive files
         if: always()
-        run: rm -f ~/.ssh/deploy_key ansible/server_init_vars.yml
+        run: rm -f ~/.ssh/init_key ansible/server_init_vars.yml
 
       - name: Print next steps
         run: |
