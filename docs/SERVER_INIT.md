@@ -380,10 +380,10 @@ YOUR_VPS_GLOBAL_IP ecdsa-sha2-nistp256 AAAA...
 | `PROD_DOMAIN_NAME` | Variable | SSL 証明書発行対象ドメイン（`server_init` 用） |
 | `CERTBOT_EMAIL` | Variable | Let's Encrypt 通知メールアドレス（`server_init` 用） |
 | `GH_OWNER` | Variable | GHCR オーナー名（例: `s-hikonyan-sys`） |
-| `INIT_SSH_PRIVATE_KEY` | Secret | 初回接続用秘密鍵（`server_init` の alma 接続で使用） |
+| `INIT_SSH_PRIVATE_KEY` | Secret | SSH 秘密鍵（`server_init` は alma、`init_ghcr` は ssh-admin。同一鍵ペア） |
 | `GH_TOKEN_FOR_GHCR` | Secret | GHCR 認証用トークン（`ghcr_token` として注入） |
-| `PROD_SSH_PRIVATE_KEY` | Secret | `ssh-admin` 接続用秘密鍵（`init_ghcr` 用。パスフレーズなし必須） |
-| `PROD_SSH_KNOWN_HOSTS` | Secret | VPS の SSH ホスト鍵（`init_ghcr` 用） |
+
+`init_ghcr` の known_hosts は workflow 実行時に `ssh-keyscan` で取得する（Secret 不要）。
 
 次に、`art-gallery-release-tools` リポジトリの Settings → Secrets and variables を更新:
 

@@ -8,8 +8,7 @@ name: Init GHCR Authentication
 #   - docker pull で "error from registry: denied" が出たとき
 #
 # 必要な Secrets（art-gallery-maintenance-tools）:
-#   PROD_SSH_PRIVATE_KEY  : ssh-admin 接続用秘密鍵（パスフレーズなし）
-#   PROD_SSH_KNOWN_HOSTS  : VPS の SSH ホスト鍵
+#   INIT_SSH_PRIVATE_KEY  : ssh-admin 接続用秘密鍵（server_init と同じ。パスフレーズなし）
 #   GH_TOKEN_FOR_GHCR     : GitHub PAT（read:packages 以上）
 #
 # 必要な Variables:
@@ -17,6 +16,7 @@ name: Init GHCR Authentication
 #   GH_OWNER              : GitHub ユーザー名（例: s-hikonyan-sys）
 #
 # 接続ユーザーは vars/connection_operations.yml の ssh-admin（server-init 完了後）。
+# known_hosts は server_init.yml と同様、実行時に ssh-keyscan で取得する。
 
 on:
   workflow_dispatch:
@@ -54,9 +54,9 @@ jobs:
       - name: Setup SSH for production (ssh-admin)
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.PROD_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.INIT_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          echo "${{ secrets.PROD_SSH_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -t ecdsa "${{ vars.PROD_HOST }}" >> ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
       - name: Write Ansible vars file
