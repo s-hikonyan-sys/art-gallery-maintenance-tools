@@ -9,8 +9,8 @@ admin_user: "ssh-admin"
 app_name: "art-gallery"
 app_user: "artgallery"
 # ホスト artgallery とコンテナ bind mount 書き込み UID/GID を一致させる（compose user: に使用）
-app_uid: 1001
-app_gid: 1001
+app_uid: 1002
+app_gid: 1002
 deployment_dir: "/opt/art-gallery"
 backend_repo_name: "art-gallery-backend"
 
